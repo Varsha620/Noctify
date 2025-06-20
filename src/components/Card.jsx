@@ -1,11 +1,16 @@
 function Card({ title, value, icon }) {
   return (
-    <div className="bg-white p-6 rounded-2xl shadow-lg">
-      <div className="flex items-start gap-4">
-        <div className="text-2xl">{icon}</div>
+    <div
+      className="bg-[#EEEEFF] p-4 rounded-2xl gap-5 m-4"
+      style={{
+        boxShadow: '-8px 5px 10px #6366F1'
+      }}
+    >
+      <div className="flex flex-col items-start gap-3">
+        <div className="text-5xl flex items-center h-10 mt-2 mb-3">{icon}</div>
         <div>
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <p className="text-gray-600 mt-1">{value}</p>
+          <h2 className="text-[1.5rem] text-[#757575e5] font-500 ml-3">{title}</h2>
+          <p className="text-2xl font-semibold text-[#2E2F6A] ml-3 mt-3">{value}</p>
         </div>
       </div>
     </div>
