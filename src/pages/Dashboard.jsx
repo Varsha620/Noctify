@@ -1,15 +1,21 @@
 import Navbar from '../components/Navbar'
 import Card from '../components/Card'
+import Sidebar from '../components/Sidebar'
+
 
 function Dashboard() {
   return (
+    <div className="flex ">
+      <Sidebar />
     <div className="flex flex-col w-full min-h-screen bg-[#ffffff] p-6">
       <Navbar />
-      
+      <div>
+        <h1 className="text-3xl font-light mb-2 text-[#424495]"> DASHBOARD</h1>
+      </div>
       {/* Main content */}
-      <div className="flex flex-col md:flex-row gap-6 mt-2 ">
+      <div className="flex flex-col gap-6 mt-2 md:flex-row ">
         {/* Left section */}
-        <div className="flex flex-col gap-6 w-full md:w-2/3">
+        <div className="flex flex-col w-full gap-6 md:w-2/3">
           {/* Welcome card */}
           <div className="bg-[#EEEEFF] p-6 rounded-2xl flex justify-between items-center h-90"
             style={{
@@ -40,8 +46,8 @@ function Dashboard() {
 
                 {/* Right section - Notifications */}
                 <div className="w-full md:w-1/3">
-                <div className="bg-white p-4 rounded-xl">
-                    <div className="flex justify-between items-center mb-2">
+                <div className="p-4 bg-white rounded-xl">
+                    <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2">
                         {/* Bell SVG */}
                         <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -58,7 +64,7 @@ function Dashboard() {
                         }}>
                         <span>Warden on rounds 🚨</span>
                         {/* Menu icon */}
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <circle cx="12" cy="6" r="1.5"/>
                           <circle cx="12" cy="12" r="1.5"/>
                           <circle cx="12" cy="18" r="1.5"/>
@@ -69,7 +75,7 @@ function Dashboard() {
                           boxShadow: '-8px 5px 10px #6366F1'
                         }}>
                         <span>Aradhana updated food 🍎</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <circle cx="12" cy="6" r="1.5"/>
                           <circle cx="12" cy="12" r="1.5"/>
                           <circle cx="12" cy="18" r="1.5"/>
@@ -80,7 +86,7 @@ function Dashboard() {
                           boxShadow: '-8px 5px 10px #6366F1'
                         }}>
                         <span>Maggie soon?</span>
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 text-gray-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-gray-400 cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <circle cx="12" cy="6" r="1.5"/>
                           <circle cx="12" cy="12" r="1.5"/>
                           <circle cx="12" cy="18" r="1.5"/>
@@ -90,7 +96,7 @@ function Dashboard() {
                   </div>
                 </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-4 mt-7 gap-3 h-1/3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-4 mt-7 h-1/3">
         <Card title="Average spent this Month" value="Rs. 5,000" 
             icon={
               <svg width="70" height="70" viewBox="10 0 100 90" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -119,6 +125,7 @@ function Dashboard() {
           } />
         </div>
       </div>
+    </div>
   )
 }
 
