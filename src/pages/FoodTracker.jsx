@@ -15,9 +15,7 @@ function FoodTracker() {
       <div className="flex flex-col w-full p-4">
         <Navbar />
         
-        <div>
-        <h1 className="text-3xl font-light mb-2 text-[#424495]"> FOOD TRACKER</h1>
-      </div>
+        <h1 className="text-3xl font-light text-[#424495] mt-6 mb-4 ml-2"> FOOD TRACKER</h1>
 
         <div className="flex flex-col justify-between mt-4 gap-7 md:flex-row">
           {/* Storage Table */}
