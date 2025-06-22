@@ -9,7 +9,7 @@ function Dashboard() {
       <Sidebar />
     <div className="flex flex-col w-full min-h-screen bg-[#ffffff] p-6">
       <Navbar />
-        <h1 className="text-3xl font-light mb-2 text-[#424495] mt-6 mb-4 ml-2"> DASHBOARD</h1>
+        <h1 className="text-3xl font-light text-[#424495] mt-6 mb-4 ml-2"> DASHBOARD</h1>
      {/* Main content */}
       <div className="flex flex-col gap-6 mt-2 md:flex-row ">
         {/* Left section */}
