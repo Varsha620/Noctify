@@ -34,7 +34,7 @@ function NotifyFriends() {
           {/* Chat Section */}
           <div className="flex flex-1 rounded-2xl bg-[#EEEEFF] shadow-lg overflow-hidden min-h-[500px] border-[#6163A8] border-[1px]" style={{ boxShadow: '0px 4px 15px 5px #6163A8' }}>
             {/* Left - Recent Chats */}
-            <div className="w-1/3 bg-[#3F3E8C] text-white flex flex-col py-4">
+            <div className="w-1/3 bg-[#424395df] text-white flex flex-col py-4 rounded-lg">
               <h3 className="flex items-center gap-2 pl-4 mb-4 text-sm font-medium text-white">
                 <svg width="27" height="27" viewBox="0 0 27 27" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M13.5 3.375C10.8147 3.375 8.23936 4.44174 6.34055 6.34054C4.44175 8.23935 3.37501 10.8147 3.37501 13.5C3.37501 16.1966 4.42688 18.6446 6.14588 20.4593L6.71289 21.0578L5.28751 23.625H13.5C14.8296 23.625 16.1463 23.3631 17.3747 22.8543C18.6031 22.3455 19.7193 21.5996 20.6595 20.6595C21.5997 19.7193 22.3455 18.6031 22.8543 17.3747C23.3631 16.1462 23.625 14.8296 23.625 13.5C23.625 12.1704 23.3631 10.8538 22.8543 9.62533C22.3455 8.39691 21.5997 7.28074 20.6595 6.34054C19.7193 5.40035 18.6031 4.65455 17.3747 4.14572C16.1463 3.63689 14.8296 3.375 13.5 3.375ZM1.12501 13.5C1.12501 6.66563 6.66563 1.125 13.5 1.125C20.3344 1.125 25.875 6.66563 25.875 13.5C25.875 20.3344 20.3344 25.875 13.5 25.875H1.46251L3.96001 21.3818C2.12424 19.1658 1.12134 16.3776 1.12501 13.5Z" fill="white" />
