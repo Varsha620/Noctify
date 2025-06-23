@@ -1,4 +1,4 @@
-// components/ChatCard.jsx
+//components/ChatCard.jsx
 function ChatCard({ name, icon, lastUpdate, isActive }) {
   return (
     <div

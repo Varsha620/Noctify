@@ -7,7 +7,7 @@ function Card({ title, value, icon }) {
       }}
     >
       <div className="flex flex-col items-start gap-3">
-        <div className="text-5xl flex items-center h-10 mt-2 mb-3">{icon}</div>
+        <div className="flex items-center h-10 mt-2 mb-3 text-5xl">{icon}</div>
         <div>
           <h2 className="text-[1.5rem] text-[#757575e5] font-500 ml-3">{title}</h2>
           <p className="text-2xl font-semibold text-[#2E2F6A] ml-3 mt-3">{value}</p>
