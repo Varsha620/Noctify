@@ -24,7 +24,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
     setRecipients('');
     onClose(); // close modal
   };
-
+  
   if (!isOpen) return null;
 
   return (
