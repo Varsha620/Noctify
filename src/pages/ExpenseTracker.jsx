@@ -1,8 +1,13 @@
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import MobileNavbar from '../components/MobileNavbar'
+import AddBillModal from '../components/AddBillModal';
+import { useState } from 'react';
+
+
 
 function ExpenseTracker() {
+  const [isAddModalOpen, setAddModalOpen] = useState(false);
   return (
     <div className="min-h-screen w-full bg-[#ffffff] flex flex-col md:flex-row">
       {/* Sidebar */}
@@ -52,13 +57,13 @@ function ExpenseTracker() {
               <div className="flex flex-col justify-between bg-[#EEEEFF] flex-1 p-4 md:p-6 shadow-lg rounded-2xl mt-5 animate-fadeInUp transform transition-all duration-200 hover:scale-105"
               style={{ boxShadow: '-5px 10px 20px #524CC7', animationDelay: '0.3s' }}>
                 <div>
-                  <svg width="50" height="50" viewBox="0 0 62 62" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:w-[62px] md:h-[62px]">
-                    <path d="M5.16675 18.0834H51.6667M41.3334 5.16669L54.2501 18.0834L41.3334 31M56.8334 43.9167H10.3334M20.6667 31L7.75008 43.9167L20.6667 56.8334" stroke="#FF2929" strokeWidth="7"/>
+                  <svg width="72" height="72" viewBox="0 0 72 72" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M36.156 3.75H35.844C33.147 3.75 30.9 3.75 29.118 3.99C27.234 4.242 25.533 4.8 24.168 6.165C22.8 7.533 22.242 9.234 21.99 11.115C21.819 12.396 21.768 15.453 21.756 18.075C15.69 18.276 12.045 18.984 9.516 21.516C6 25.029 6 30.687 6 42C6 53.313 6 58.971 9.516 62.484C13.032 65.997 18.687 66 30 66H42C53.313 66 58.971 66 62.484 62.484C65.997 58.968 66 53.313 66 42C66 30.687 66 25.029 62.484 21.516C59.955 18.984 56.31 18.276 50.244 18.078C50.232 15.453 50.184 12.396 50.01 11.118C49.758 9.234 49.2 7.533 47.832 6.168C46.467 4.8 44.766 4.242 42.882 3.99C41.1 3.75 38.85 3.75 36.156 3.75ZM45.744 18.006C45.729 15.465 45.687 12.732 45.552 11.715C45.363 10.332 45.042 9.738 44.652 9.348C44.262 8.958 43.668 8.637 42.282 8.448C40.836 8.256 38.892 8.25 36 8.25C33.108 8.25 31.164 8.256 29.715 8.451C28.332 8.637 27.738 8.958 27.348 9.351C26.958 9.744 26.637 10.332 26.448 11.715C26.313 12.735 26.268 15.465 26.256 18.006C27.432 18 28.68 17.998 30 18H42C43.324 18 44.572 18.002 45.744 18.006ZM36 27.75C36.5967 27.75 37.169 27.9871 37.591 28.409C38.0129 28.831 38.25 29.4033 38.25 30V30.03C41.517 30.852 44.25 33.429 44.25 36.999C44.25 37.5957 44.0129 38.168 43.591 38.59C43.169 39.0119 42.5967 39.249 42 39.249C41.4033 39.249 40.831 39.0119 40.409 38.59C39.9871 38.168 39.75 37.5957 39.75 36.999C39.75 35.847 38.472 34.251 36 34.251C33.528 34.251 32.25 35.847 32.25 36.999C32.25 38.151 33.528 39.75 36 39.75C40.155 39.75 44.25 42.63 44.25 47.001C44.25 50.571 41.517 53.145 38.25 53.97V54C38.25 54.5967 38.0129 55.169 37.591 55.591C37.169 56.0129 36.5967 56.25 36 56.25C35.4033 56.25 34.831 56.0129 34.409 55.591C33.9871 55.169 33.75 54.5967 33.75 54V53.97C30.483 53.148 27.75 50.571 27.75 47.001C27.75 46.4043 27.9871 45.832 28.409 45.41C28.831 44.9881 29.4033 44.751 30 44.751C30.5967 44.751 31.169 44.9881 31.591 45.41C32.0129 45.832 32.25 46.4043 32.25 47.001C32.25 48.153 33.528 49.749 36 49.749C38.472 49.749 39.75 48.153 39.75 47.001C39.75 45.849 38.472 44.25 36 44.25C31.845 44.25 27.75 41.37 27.75 36.999C27.75 33.429 30.483 30.852 33.75 30.03V30C33.75 29.4033 33.9871 28.831 34.409 28.409C34.831 27.9871 35.4033 27.75 36 27.75Z" fill="#FF2929" />
                   </svg>
-                  <p className="mt-3 mb-5 ml-2 text-base md:text-lg text-[#757575ec]">Pay your pending bills.</p>
+                  <p className="mt-3 mb-5 ml-2 text-base md:text-lg text-[#757575ec]">Add a new bill.</p>
                 </div>
-                <button className="px-4 py-2 mt-4 text-sm text-white bg-gradient-to-br from-[#991919] to-[#FF2929] rounded-xl hover:brightness-90 w-fit transform transition-all duration-200 hover:scale-105">
-                  Pay Now →
+                <button className="px-4 py-2 mt-4 text-sm text-white bg-gradient-to-br from-[#991919] to-[#FF2929] rounded-xl hover:brightness-90 w-fit transform transition-all duration-200 hover:scale-105" onClick={() => setAddModalOpen(true)}>
+                  Add Now →
                 </button>
               </div>
             </div>
@@ -115,6 +120,14 @@ function ExpenseTracker() {
           </div>
         </div>
       </div>
+      <AddBillModal
+        isOpen={isAddModalOpen}
+        onClose={() => setAddModalOpen(false)}
+        onSubmit={(billData) => {
+          console.log('Saving bill data:', billData);
+          // We'll store this in Firebase in Step 5
+        }}
+      />
     </div>
   )
 }
