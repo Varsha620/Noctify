@@ -36,14 +36,14 @@ function FoodTracker() {
                     <th className="py-2">|</th>
                     <th className="py-2">Added On</th>
                     <th className="py-2">|</th>
-                    <th className="py-2">Added By</th>
+                    <th className="py-2">Expiring On</th>
                   </tr>
                 </thead>
                 <tbody className="text-[#423535]">
                   {[
-                    { item: 'Apple', date: '5 Mar 2025', by: 'Varsha' },
-                    { item: 'Banana', date: '5 Mar 2025', by: 'Alona' },
-                    { item: 'Fresh Cream', date: '5 Mar 2025', by: 'Aradhana' }
+                    { item: 'Apple', date: '5 Mar 2025', by: '6 Mar 2025' },
+                    { item: 'Banana', date: '5 Mar 2025', by: '6 Mar 2025' },
+                    { item: 'Fresh Cream', date: '5 Mar 2025', by: '6 Mar 2025' }
                   ].map((row, index) => (
                     <tr key={index} className="transition-colors duration-200 animate-slideInUp hover:bg-white/50" style={{ animationDelay: `${0.1 * index}s` }}>
                       <td className="py-2">{row.item}</td>
