@@ -1,7 +1,11 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
+import { db } from '../firebase';
 
 function Login() {
+  const navigate = useNavigate();
   const [isLogin, setIsLogin] = useState(true);
   const [formData, setFormData] = useState({
     email: '',
@@ -16,11 +20,46 @@ function Login() {
       [e.target.name]: e.target.value
     });
   };
-
-  const handleSubmit = (e) => {
+  
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Handle login/signup logic here
-    console.log('Form submitted:', formData);
+    const auth = getAuth();
+
+    if (isLogin) {
+      // LOGIN
+      try {
+        await signInWithEmailAndPassword(auth, formData.email, formData.password);
+        alert('✅ Logged in successfully');
+        navigate('/'); // Redirect to dashboard
+      } catch (error) {
+        alert(`❌ Login failed: ${error.message}`);
+      }
+    } else {
+      // SIGNUP
+      if (formData.password !== formData.confirmPassword) {
+        alert('Passwords do not match');
+        return;
+      }
+
+      try {
+        const userCred = await createUserWithEmailAndPassword(auth, formData.email, formData.password);
+        const uid = userCred.user.uid;
+
+        await setDoc(doc(db, 'users', uid), {
+          name: formData.name,
+          email: formData.email,
+          createdAt: new Date()
+        });
+
+        localStorage.setItem('uid', userCred.user.uid);
+        localStorage.setItem('name', formData.name);
+
+        alert('✅ Account created!');
+        navigate('/login'); // Redirect to login page
+        } catch (error) {
+        alert(`❌ Signup failed: ${error.message}`);
+      }
+    }
   };
 
   return (

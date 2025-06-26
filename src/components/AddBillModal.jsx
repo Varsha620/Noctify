@@ -1,12 +1,29 @@
-import { useState } from 'react';
-
-
+import { useState, useEffect } from 'react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '../firebase';
 
 function AddBillModal({ isOpen, onClose, onSubmit }) {
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [shouldSplit, setShouldSplit] = useState(false);
   const [recipients, setRecipients] = useState('');
+  const [allUsers, setAllUsers] = useState([]);
+  const [splitTo, setSplitTo] = useState([]);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const snapshot = await getDocs(collection(db, 'users'));
+      const userList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setAllUsers(userList);
+    };
+    fetchUsers();
+  }, []);
+
+  const handleSplitChange = (e) => {
+    const options = Array.from(e.target.selectedOptions);
+    const selectedValues = options.map(option => option.value);
+    setSplitTo(selectedValues);
+  };
 
   const handleFormSubmit = (e) => {
     e.preventDefault();
@@ -14,7 +31,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
       amount: Number(amount),
       description,
       shouldSplit,
-      recipients: recipients.split(',').map(name => name.trim()),
+      recipients: shouldSplit ? splitTo : recipients.split(',').map(name => name.trim()),
       timestamp: new Date()
     });
     // Reset form
@@ -22,9 +39,10 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
     setDescription('');
     setShouldSplit(false);
     setRecipients('');
-    onClose(); // close modal
+    setSplitTo([]);
+    onClose();
   };
-  
+
   if (!isOpen) return null;
 
   return (
@@ -57,15 +75,24 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
             Split with friends?
           </label>
           {shouldSplit && (
-            <input
-              type="text"
-              value={recipients}
-              onChange={(e) => setRecipients(e.target.value)}
-              placeholder="Enter names separated by commas"
-              className="p-2 border rounded"
-              required
-            />
+            <div className="flex flex-col gap-2">
+              <label className="text-sm">Select friends to split with:</label>
+              <select 
+                multiple 
+                value={splitTo} 
+                onChange={handleSplitChange}
+                className="h-32 p-2 border rounded"
+              >
+                {allUsers.map(user => (
+                  <option key={user.id} value={user.name}>
+                    {user.name}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-gray-500">Hold Ctrl/Cmd to select multiple</p>
+            </div>
           )}
+  
           <div className="flex justify-end gap-2 mt-4">
             <button
               type="button"
