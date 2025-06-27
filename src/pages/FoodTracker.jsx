@@ -6,15 +6,29 @@ import { db } from '../firebase';
 import { collection, getDocs, query, orderBy } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import AddFoodItemModal from '../components/AddFoodItemModal';
-import { addDoc, doc } from 'firebase/firestore';
+import { addDoc } from 'firebase/firestore';
 import { serverTimestamp } from 'firebase/firestore';
 
+const DISH_RECIPES = [
+  {
+    name: 'Fruit Salad 🥗',
+    ingredients: ['Apple', 'Banana', 'Fresh Cream']
+  },
+  {
+    name: 'Smoothie 🥤',
+    ingredients: ['Banana', 'Fresh Cream']
+  },
+  {
+    name: 'Apple Cream Dessert 🍎🍨',
+    ingredients: ['Apple', 'Banana']
+  }
+];
 
 function FoodTracker() {
   const [items, setItems] = useState([]);
   const { currentUser } = useAuth();
   const [showModal, setShowModal] = useState(false);
-
+  const [suggestedDishes, setSuggestedDishes] = useState([]);
 
   useEffect(() => {
     const fetchItems = async () => {
@@ -37,36 +51,46 @@ function FoodTracker() {
     fetchItems();
   }, [currentUser]);
 
+  useEffect(() => {
+    const ingredientNames = items.map(item => item.name.toLowerCase());
+    const suggestions = DISH_RECIPES.filter(dish =>
+      dish.ingredients.every(ingredient =>
+        ingredientNames.includes(ingredient.toLowerCase())
+      )
+    );
+    setSuggestedDishes(suggestions);
+  }, [items]);
+
   // Get expiring soon items (top 3 closest to expiry)
   const expiringSoonItems = items
     .filter(item => item.expiryDate)
     .sort((a, b) => a.expiryDate.seconds - b.expiryDate.seconds)
     .slice(0, 3);
     
- const handleAddItem = async (item) => {
-  if (!currentUser) return;
+  const handleAddItem = async (item) => {
+    if (!currentUser) return;
 
-  try {
-    const foodRef = collection(db, 'users', currentUser.uid, 'foodItems');
-    await addDoc(foodRef, {
-      ...item,
-      addedOn: serverTimestamp()
-    });
-    setShowModal(false);
-    
-    // Refresh the items list
-    const q = query(foodRef, orderBy('expiryDate', 'asc'));
-    const snapshot = await getDocs(q);
-    const foodList = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
-    setItems(foodList);
-  } catch (error) {
-    console.error('Error adding food item:', error);
-  }
-};
-
+    try {
+      const foodRef = collection(db, 'users', currentUser.uid, 'foodItems');
+      await addDoc(foodRef, {
+        name: item.name,
+        expiryDate: item.expiryDate,
+        addedOn: serverTimestamp()
+      });
+      setShowModal(false);
+      
+      // Refresh the items list
+      const q = query(foodRef, orderBy('expiryDate', 'asc'));
+      const snapshot = await getDocs(q);
+      const foodList = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setItems(foodList);
+    } catch (error) {
+      console.error('Error adding food item:', error);
+    }
+  };
 
   return (
     <div className="min-h-screen w-full bg-[#ffffff] flex flex-col md:flex-row">
@@ -146,20 +170,26 @@ function FoodTracker() {
               >
                 +
               </button>
-
             </div>
           </div>
 
           {/* Right Cards */}
           <div className="flex flex-col w-full gap-5 lg:w-1/3">
             {/* Suggested Dishes */}
-            <div className="bg-[#EEEEFF] p-4 rounded-xl shadow-md flex-1 min-h-[250px] animate-fadeInUp"
-              style={{ boxShadow: '-5px 10px 30px #524CC7', animationDelay: '0.2s' }}>
-              <h3 className="text-[#6366F1] text-medium text-lg md:text-xl m-3 md:m-5">Suggested Dishes :</h3>
-              <ul className="m-3 mt-2 space-y-2 text-sm md:m-5 text-zinc-700">
-                <li className="transform transition-all duration-200 hover:scale-105 hover:text-[#3C3E87]">→ <span className="font-semibold text-[#3C3E87]">Fruit Salad 🥗</span></li>
-                <li className="transform transition-all duration-200 hover:scale-105 hover:text-[#3C3E87]">→ <span className="font-semibold text-[#3C3E87]">Smoothie 🥤</span></li>
-              </ul>
+            <div className="bg-[#EEEEFF] p-4 rounded-xl shadow-md flex-1  animate-fadeInUp"
+              style={{ boxShadow: '-5px 10px 30px #524CC7', animationDelay: '0.3s' }}>
+              <h3 className="text-xl text-[#6366F1] font-semibold mb-2">Suggested Dishes :</h3>
+              {suggestedDishes.length > 0 ? (
+                <ul className="list-disc pl-6 pt-3 text-[#3C3E87]">
+                  {suggestedDishes.map((dish, index) => (
+                    <li key={index} className="transition-all duration-200 transform ">
+                      {dish.name}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-sm text-gray-600">No dishes found with current ingredients.</p>
+              )}
             </div>
 
             {/* Reminders */}
@@ -219,7 +249,6 @@ function FoodTracker() {
         onClose={() => setShowModal(false)}
         onSubmit={handleAddItem}
       />
-
     </div>
   )
 }
