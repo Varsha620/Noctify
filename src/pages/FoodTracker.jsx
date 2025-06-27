@@ -1,8 +1,73 @@
 import Navbar from '../components/Navbar'
 import Sidebar from '../components/Sidebar'
 import MobileNavbar from '../components/MobileNavbar'
+import { useEffect, useState } from 'react';
+import { db } from '../firebase';
+import { collection, getDocs, query, orderBy } from 'firebase/firestore';
+import { useAuth } from '../context/AuthContext';
+import AddFoodItemModal from '../components/AddFoodItemModal';
+import { addDoc, doc } from 'firebase/firestore';
+import { serverTimestamp } from 'firebase/firestore';
+
 
 function FoodTracker() {
+  const [items, setItems] = useState([]);
+  const { currentUser } = useAuth();
+  const [showModal, setShowModal] = useState(false);
+
+
+  useEffect(() => {
+    const fetchItems = async () => {
+      if (!currentUser) return;
+
+      try {
+        const foodRef = collection(db, 'users', currentUser.uid, 'foodItems');
+        const q = query(foodRef, orderBy('expiryDate', 'asc'));
+        const snapshot = await getDocs(q);
+        const foodList = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setItems(foodList);
+      } catch (error) {
+        console.error('Error fetching food items:', error);
+      }
+    };
+
+    fetchItems();
+  }, [currentUser]);
+
+  // Get expiring soon items (top 3 closest to expiry)
+  const expiringSoonItems = items
+    .filter(item => item.expiryDate)
+    .sort((a, b) => a.expiryDate.seconds - b.expiryDate.seconds)
+    .slice(0, 3);
+    
+ const handleAddItem = async (item) => {
+  if (!currentUser) return;
+
+  try {
+    const foodRef = collection(db, 'users', currentUser.uid, 'foodItems');
+    await addDoc(foodRef, {
+      ...item,
+      addedOn: serverTimestamp()
+    });
+    setShowModal(false);
+    
+    // Refresh the items list
+    const q = query(foodRef, orderBy('expiryDate', 'asc'));
+    const snapshot = await getDocs(q);
+    const foodList = snapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+    setItems(foodList);
+  } catch (error) {
+    console.error('Error adding food item:', error);
+  }
+};
+
+
   return (
     <div className="min-h-screen w-full bg-[#ffffff] flex flex-col md:flex-row">
       {/* Sidebar */}
@@ -31,34 +96,57 @@ function FoodTracker() {
             <div className="overflow-x-auto">
               <table className="w-full text-center min-w-[500px]">
                 <thead>
-                  <tr className="text-[#424495] text-lg md:text-2xl font-semibold">
+                  <tr className="text-[#424495] text-lg md:text-2xl font-normal">
                     <th className="py-2">Items</th>
                     <th className="py-2">|</th>
                     <th className="py-2">Added On</th>
                     <th className="py-2">|</th>
                     <th className="py-2">Expiring On</th>
+                    <th className="py-2">|</th>
+                    <th className="py-2">Status</th>
                   </tr>
                 </thead>
                 <tbody className="text-[#423535]">
-                  {[
-                    { item: 'Apple', date: '5 Mar 2025', by: '6 Mar 2025' },
-                    { item: 'Banana', date: '5 Mar 2025', by: '6 Mar 2025' },
-                    { item: 'Fresh Cream', date: '5 Mar 2025', by: '6 Mar 2025' }
-                  ].map((row, index) => (
-                    <tr key={index} className="transition-colors duration-200 animate-slideInUp hover:bg-white/50" style={{ animationDelay: `${0.1 * index}s` }}>
-                      <td className="py-2">{row.item}</td>
-                      <td className="py-2">|</td>
-                      <td className="py-2">{row.date}</td>
-                      <td className="py-2">|</td>
-                      <td className="py-2">{row.by}</td>
-                    </tr>
-                  ))}
+                  {items.map(item => {
+                    const added = item.addedOn?.seconds ? new Date(item.addedOn.seconds * 1000).toLocaleDateString() : 'N/A';
+                    const expires = item.expiryDate?.seconds ? new Date(item.expiryDate.seconds * 1000) : null;
+                    const today = new Date();
+                    const diff = expires ? Math.ceil((expires - today) / (1000 * 60 * 60 * 24)) : 0;
+
+                    let label = '';
+                    let color = '';
+                    if (diff <= 2) { label = '2 days'; color = 'bg-red-500'; }
+                    else if (diff <= 7) { label = '1 week'; color = 'bg-yellow-400'; }
+                    else { label = '1 month'; color = 'bg-green-500'; }
+
+                    return (
+                      <tr key={item.id} className="h-12">
+                        <td>{item.name}</td>
+                        <td>|</td>
+                        <td>{added}</td>
+                        <td>|</td>
+                        <td>{expires ? expires.toLocaleDateString() : 'N/A'}</td>
+                        <td>|</td>
+                        <td>
+                          <span className={`px-2 py-1 rounded-full text-white ${color}`}>
+                            {label}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
             
             <div className="flex justify-end mt-4">
-              <button className="w-10 h-10 rounded-full bg-white text-[#4A5FE1] shadow-md hover:bg-[#e0e0ff] text-xl transform transition-all duration-200 hover:scale-110 active:scale-95">+</button>
+              <button
+                onClick={() => setShowModal(true)}
+                className="w-10 h-10 rounded-full bg-white text-[#4A5FE1] shadow-md hover:bg-[#e0e0ff] text-xl transform transition-all duration-200 hover:scale-110 active:scale-95"
+              >
+                +
+              </button>
+
             </div>
           </div>
 
@@ -93,20 +181,32 @@ function FoodTracker() {
                     </tr>
                   </thead>
                   <tbody className="text-center text-zinc-700">
-                    {[
-                      { item: 'Banana', time: '2 days', color: 'bg-red-500' },
-                      { item: 'Apples', time: '1 week', color: 'bg-yellow-400' },
-                      { item: 'Fresh Cream', time: '1 month', color: 'bg-green-500' }
-                    ].map((reminder, index) => (
-                      <tr key={index} className="h-10 animate-slideInRight" style={{ animationDelay: `${0.1 * index}s` }}>
-                        <td>{reminder.item}</td>
-                        <td>
-                          <span className={`px-2 py-1 text-xs text-white rounded-full ${reminder.color} animate-pulse`}>
-                            {reminder.time}
-                          </span>
-                        </td>
+                    {expiringSoonItems.map((item, index) => {
+                      const expires = item.expiryDate?.seconds ? new Date(item.expiryDate.seconds * 1000) : null;
+                      const today = new Date();
+                      const diff = expires ? Math.ceil((expires - today) / (1000 * 60 * 60 * 24)) : 0;
+                      
+                      let color = '';
+                      if (diff <= 2) { color = 'bg-red-500'; }
+                      else if (diff <= 7) { color = 'bg-yellow-400'; }
+                      else { color = 'bg-green-500'; }
+
+                      return (
+                        <tr key={index} className="h-10 animate-slideInRight" style={{ animationDelay: `${0.1 * index}s` }}>
+                          <td>{item.name}</td>
+                          <td>
+                            <span className={`px-2 py-1 text-xs text-white rounded-full ${color} animate-pulse`}>
+                              {diff <= 0 ? 'Expired' : `${diff} days`}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                    {expiringSoonItems.length === 0 && (
+                      <tr>
+                        <td colSpan="2" className="py-4 text-gray-500">No items expiring soon</td>
                       </tr>
-                    ))}
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -114,6 +214,12 @@ function FoodTracker() {
           </div>
         </div>
       </div>
+      <AddFoodItemModal
+        isOpen={showModal}
+        onClose={() => setShowModal(false)}
+        onSubmit={handleAddItem}
+      />
+
     </div>
   )
 }
