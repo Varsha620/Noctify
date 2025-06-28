@@ -5,6 +5,7 @@ import AddBillModal from '../components/AddBillModal';
 import { db } from '../firebase';
 import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs } from 'firebase/firestore';
 import { startOfMonth, endOfMonth } from 'date-fns';
+import { useAuth } from '../context/AuthContext';
 
 const getCurrentMonthTotal = (bills, currentUser) => {
   const now = new Date();
@@ -20,17 +21,18 @@ function ExpenseTracker() {
   const [isAddModalOpen, setAddModalOpen] = useState(false);
   const [bills, setBills] = useState([]);
   const [expandedBillId, setExpandedBillId] = useState(null);
-  const currentUser = 'user1'; // Replace with actual auth later
+  const { currentUser } = useAuth();
   const [youPaid, setYouPaid] = useState(0);
   const [youOwe, setYouOwe] = useState(0);
-  const myMonthlyTotal = getCurrentMonthTotal(bills, currentUser);
+  const myMonthlyTotal = getCurrentMonthTotal(bills, currentUser?.uid);
   const [friends, setFriends] = useState([]);
 
   // Get pending bills for current user
   const getPendingBills = () => {
+    if (!currentUser) return [];
     return bills.filter(bill => 
-      bill.splitTo?.includes(currentUser) && 
-      !bill.paidBy?.includes(currentUser) &&
+      bill.splitTo?.includes(currentUser.uid) && 
+      !bill.paidBy?.includes(currentUser.uid) &&
       bill.status !== 'Paid'
     );
   };
@@ -59,6 +61,8 @@ function ExpenseTracker() {
 
   // Fetch bills data
   useEffect(() => {
+    if (!currentUser) return;
+
     const unsubscribe = onSnapshot(collection(db, 'bills'), (snapshot) => {
       const billsData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -68,20 +72,24 @@ function ExpenseTracker() {
     });
 
     return () => unsubscribe();
-  }, []);
+  }, [currentUser]);
   
   // Fetch Friends for the split bill feature
   useEffect(() => {
+    if (!currentUser) return;
+
     const fetchFriends = async () => {
       const querySnapshot = await getDocs(collection(db, 'users'));
       const usersList = querySnapshot.docs.map(doc => doc.data().name);
-      setFriends(usersList.filter(u => u !== currentUser));
+      setFriends(usersList.filter(u => u !== currentUser.uid));
     };
 
     fetchFriends();
-  }, []);
+  }, [currentUser]);
 
   useEffect(() => {
+    if (!currentUser) return;
+
     let paid = 0;
     let owe = 0;
     const now = new Date();
@@ -94,20 +102,32 @@ function ExpenseTracker() {
 
       const share = bill.amount / (bill.splitTo?.length || 1);
 
-      if (bill.paidBy?.includes(currentUser)) {
+      if (bill.paidBy?.includes(currentUser.uid)) {
         paid += share;
       }
 
-      if (bill.splitTo?.includes(currentUser) && !bill.paidBy?.includes(currentUser)) {
+      if (bill.splitTo?.includes(currentUser.uid) && !bill.paidBy?.includes(currentUser.uid)) {
         owe += share;
       }
     });
 
     setYouPaid(paid);
     setYouOwe(owe);
-  }, [bills]);
+  }, [bills, currentUser]);
 
   const pendingBills = getPendingBills();
+
+  // Show loading state if user is not authenticated
+  if (!currentUser) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#F32D17]"></div>
+          <p className="mt-4 text-[#5E000C]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-white md:flex-row">
@@ -158,7 +178,7 @@ function ExpenseTracker() {
                         <p className="text-white/80 text-sm">Amount: Rs.{(bill.amount / (bill.splitTo?.length || 1)).toFixed(2)}</p>
                       </div>
                       <button
-                        onClick={() => togglePaymentStatus(bill.id, currentUser, bill.paidBy || [])}
+                        onClick={() => togglePaymentStatus(bill.id, currentUser.uid, bill.paidBy || [])}
                         className="px-3 py-1 bg-white text-[#F32D17] rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
                       >
                         Mark Paid
@@ -306,7 +326,7 @@ function ExpenseTracker() {
               ...billData,
               paidBy: [],
               createdAt: new Date(),
-              createdBy: currentUser
+              createdBy: currentUser.uid
             });
             console.log('Bill saved with ID:', docRef.id);
             setAddModalOpen(false);

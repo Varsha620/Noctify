@@ -15,13 +15,15 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
 
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!currentUser) return;
+      
       const snapshot = await getDocs(collection(db, 'users'));
       const usersList = snapshot.docs
         .map(doc => ({ uid: doc.id, ...doc.data() }))
         .filter(user => user.uid !== currentUser.uid); // exclude self
       setAllUsers(usersList);
     };
-    if (isOpen) fetchUsers();
+    if (isOpen && currentUser) fetchUsers();
   }, [isOpen, currentUser]);
 
   const handleAddMember = (e) => {
@@ -44,6 +46,11 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
 
     if (selectedUserIds.length === 0) {
       setError('Please add at least one member');
+      return;
+    }
+
+    if (!currentUser) {
+      setError('User not authenticated');
       return;
     }
 
