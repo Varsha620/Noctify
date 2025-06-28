@@ -8,6 +8,7 @@ function BatBot() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const handleAskBatBot = async (e) => {
     e.preventDefault();
@@ -20,50 +21,42 @@ function BatBot() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('/api/batbot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: userMsg }),
-      });
+      // Simulate API call for demo
+      setTimeout(() => {
+        const botResponse = `🦇 Greetings, citizen! As the Dark Knight of Gotham, I've analyzed your query: "${userMsg}". The shadows whisper that you seek wisdom, and I shall provide it with the precision of a batarang. Remember, it's not who I am underneath, but what I do that defines me. Stay vigilant! 🌃`;
+        
+        const finalChat = [...updatedChat, { sender: 'batbot', text: botResponse }];
+        setChat(finalChat);
 
-      if (!res.ok) {
-        throw new Error('Network response was not ok');
-      }
-
-      const data = await res.json();
-      const finalChat = [...updatedChat, { sender: 'batbot', text: data.reply }];
-      setChat(finalChat);
-
-      // Update chat history
-      if (!currentChatId) {
-        const newChatId = Date.now();
-        setCurrentChatId(newChatId);
-        setChatHistory(prev => [
-          ...prev,
-          {
-            id: newChatId,
-            title: userMsg.substring(0, 30),
-            lastMessage: data.reply.substring(0, 50)
-          }
-        ]);
-      } else {
-        setChatHistory(prev =>
-          prev.map(item =>
-            item.id === currentChatId
-              ? {
-                  ...item,
-                  lastMessage: data.reply.substring(0, 50)
-                }
-              : item
-          )
-        );
-      }
+        // Update chat history
+        if (!currentChatId) {
+          const newChatId = Date.now();
+          setCurrentChatId(newChatId);
+          setChatHistory(prev => [
+            ...prev,
+            {
+              id: newChatId,
+              title: userMsg.substring(0, 30),
+              lastMessage: botResponse.substring(0, 50)
+            }
+          ]);
+        } else {
+          setChatHistory(prev =>
+            prev.map(item =>
+              item.id === currentChatId
+                ? {
+                    ...item,
+                    lastMessage: botResponse.substring(0, 50)
+                  }
+                : item
+            )
+          );
+        }
+        setIsLoading(false);
+      }, 1000);
     } catch (error) {
       console.error('Error:', error);
-      setChat(prev => [...prev, { sender: 'batbot', text: "Sorry, I encountered an error. Please try again." }]);
-    } finally {
+      setChat(prev => [...prev, { sender: 'batbot', text: "🦇 The Bat-Computer is experiencing technical difficulties. Even Batman needs tech support sometimes! 🔧" }]);
       setIsLoading(false);
     }
   };
@@ -83,89 +76,221 @@ function BatBot() {
       {/* Main Content */}
       <div className="flex flex-col w-full p-4">
         <Navbar />
-        <h2 className="text-3xl font-light text-[#424495] mt-6 mb-4 ml-2">"Call me Bat-Bot"</h2>
+        <h2 className="text-3xl font-light text-[#5E000C] mt-6 mb-4 ml-2">"Call me Bat-Bot"</h2>
 
         <div className="flex flex-col gap-6 md:flex-row">
           {/* Chat Section */}
-          <div className="flex flex-1 rounded-2xl bg-[#EEEEFF] shadow-lg overflow-hidden min-h-[500px] mr-10 mt-3 border-[#6163A8] border-[1px]" style={{ boxShadow: '0px 4px 15px 5px #6163A8' }}>
-            {/* Left - Chat History Sidebar */}
-            <div className="w-1/3 bg-[#3F3E8C] text-white flex flex-col py-4">
-              <div className="flex items-center justify-between px-4 mb-4">
-                <h3 className="text-sm font-medium text-white">Chat History</h3>
-                <button 
-                  onClick={startNewChat}
-                  className="text-xs bg-[#5353ff] hover:bg-[#4242d6] px-2 py-1 rounded"
-                >
-                  New Chat
-                </button>
-              </div>
-              <div className="flex flex-col gap-1 px-2 overflow-y-auto">
-                {chatHistory.length === 0 ? (
-                  <p className="px-3 py-2 text-sm text-gray-300">No conversations yet</p>
-                ) : (
-                  chatHistory.map((chatItem) => (
-                    <div
-                      key={chatItem.id}
-                      onClick={() => {
-                        // In a real app, you would fetch the chat messages for this ID
-                        setCurrentChatId(chatItem.id);
-                      }}
-                      className={`px-3 py-2 rounded-lg cursor-pointer hover:bg-[#5353ff] ${
-                        currentChatId === chatItem.id ? 'bg-[#5353ff]' : ''
-                      }`}
+          <div className="flex flex-1 rounded-2xl bg-gradient-to-br from-[#FD8839] to-[#F32D17] shadow-lg overflow-hidden min-h-[500px] mr-0 md:mr-10 mt-3 border-[#C1000F] border-[1px]" style={{ boxShadow: '0px 4px 15px 5px #C1000F' }}>
+            
+            {/* Mobile Layout */}
+            <div className="flex w-full md:hidden">
+              {showHistory ? (
+                // Chat History (Mobile)
+                <div className="w-full bg-gradient-to-b from-[#F32D17] to-[#C1000F] text-white flex flex-col py-4">
+                  <div className="flex items-center justify-between px-4 mb-4">
+                    <button 
+                      onClick={() => setShowHistory(false)}
+                      className="text-white hover:bg-white/20 p-1 rounded"
                     >
-                      <div className="text-sm font-medium truncate">{chatItem.title}</div>
-                      <div className="text-xs text-gray-300 truncate">{chatItem.lastMessage}</div>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Right - Main Chat Area */}
-            <div className="flex flex-1 flex-col bg-[#EEEEFF] p-4 relative">
-              {chat.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-full">
-                  <svg width="147" height="147" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="#9591EF" />
-                  </svg>
-                  <p className="text-md text-[#6366F1] bg-[#736ded6a] p-1 px-5 rounded-full mt-9 w-full text-center">Bored? Lets mess things😏</p>
-                  <p className="text-md text-[#6366F1] bg-[#736ded6a] p-1 px-5 rounded-full mt-3 w-full text-center">In chef mode? Just ask my lord🧎‍♂️</p>
+                      ←
+                    </button>
+                    <h3 className="text-sm font-medium text-white">Chat History</h3>
+                    <button 
+                      onClick={startNewChat}
+                      className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded"
+                    >
+                      New Chat
+                    </button>
+                  </div>
+                  <div className="flex flex-col gap-1 px-2 overflow-y-auto">
+                    {chatHistory.length === 0 ? (
+                      <p className="px-3 py-2 text-sm text-white/70">No conversations yet</p>
+                    ) : (
+                      chatHistory.map((chatItem) => (
+                        <div
+                          key={chatItem.id}
+                          onClick={() => {
+                            setCurrentChatId(chatItem.id);
+                            setShowHistory(false);
+                          }}
+                          className={`px-3 py-2 rounded-lg cursor-pointer hover:bg-white/20 ${
+                            currentChatId === chatItem.id ? 'bg-white/30' : ''
+                          }`}
+                        >
+                          <div className="text-sm font-medium truncate">{chatItem.title}</div>
+                          <div className="text-xs text-white/70 truncate">{chatItem.lastMessage}</div>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
               ) : (
-                <div className="flex-1 mb-4 overflow-y-auto">
-                  {chat.map((msg, idx) => (
-                    <div
-                      key={idx}
-                      className={`flex mb-3 ${msg.sender === 'batbot' ? 'justify-start' : 'justify-end'}`}
+                // Main Chat (Mobile)
+                <div className="flex flex-1 flex-col bg-white/10 p-4 relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <button 
+                      onClick={() => setShowHistory(true)}
+                      className="text-white hover:bg-white/20 p-2 rounded"
                     >
-                      <div
-                        className={`max-w-[80%] px-4 py-2 rounded-xl text-sm ${msg.sender === 'batbot' ? 'bg-[#168594] text-white' : 'bg-[#5353ff] text-white'}`}
-                      >
-                        {msg.text}
-                      </div>
+                      ☰
+                    </button>
+                    <h3 className="text-white font-medium">Bat-Bot</h3>
+                    <button 
+                      onClick={startNewChat}
+                      className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded text-white"
+                    >
+                      New
+                    </button>
+                  </div>
+
+                  {chat.length === 0 ? (
+                    <div className="flex flex-col items-center justify-center h-full">
+                      <svg width="100" height="100" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.7" />
+                      </svg>
+                      <p className="text-md text-white bg-white/20 p-2 px-5 rounded-full mt-4 w-full text-center">Bored? Let's mess things😏</p>
+                      <p className="text-md text-white bg-white/20 p-2 px-5 rounded-full mt-3 w-full text-center">In chef mode? Just ask my lord🧎‍♂️</p>
                     </div>
-                  ))}
+                  ) : (
+                    <div className="flex-1 mb-4 overflow-y-auto">
+                      {chat.map((msg, idx) => (
+                        <div
+                          key={idx}
+                          className={`flex mb-3 ${msg.sender === 'batbot' ? 'justify-start' : 'justify-end'}`}
+                        >
+                          <div
+                            className={`max-w-[80%] px-4 py-2 rounded-xl text-sm ${
+                              msg.sender === 'batbot' 
+                                ? 'bg-white/30 text-white' 
+                                : 'bg-white/20 text-white'
+                            }`}
+                          >
+                            {msg.text}
+                          </div>
+                        </div>
+                      ))}
+                      {isLoading && (
+                        <div className="flex justify-start mb-3">
+                          <div className="bg-white/30 text-white px-4 py-2 rounded-xl text-sm">
+                            🦇 Analyzing...
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Chat Input */}
+                  <form onSubmit={handleAskBatBot} className="flex items-center w-full px-4 py-2 mt-auto bg-white rounded-full shadow-inner">
+                    <input 
+                      type="text" 
+                      value={input}
+                      onChange={(e) => setInput(e.target.value)}
+                      placeholder="BatBot at your service👾..." 
+                      className="flex-1 outline-none text-sm text-[#5E000C] placeholder-gray-500" 
+                    />
+                    <button 
+                      type="submit"
+                      disabled={isLoading}
+                      className="ml-2 w-8 h-8 bg-[#FD8839] rounded-full flex items-center justify-center hover:bg-[#F32D17] text-white"
+                    >
+                      {isLoading ? '...' : '↑'}
+                    </button>
+                  </form>
                 </div>
               )}
+            </div>
 
-              {/* Chat Input */}
-              <form onSubmit={handleAskBatBot} className="flex items-center w-full max-w-sm px-4 py-2 mt-auto bg-white rounded-full shadow-inner">
-                <input 
-                  type="text" 
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="BatBot at your service👾..." 
-                  className="flex-1 outline-none text-sm text-[#3C3E87] placeholder-[#787bd6b0]" 
-                />
-                <button 
-                  type="submit"
-                  disabled={isLoading}
-                  className="ml-2 w-8 h-8 bg-[#BDBDFE] rounded-full flex items-center justify-center hover:bg-[#9B9BFE]"
-                >
-                  {isLoading ? '...' : '↑'}
-                </button>
-              </form>
+            {/* Desktop Layout */}
+            <div className="hidden md:flex w-full">
+              {/* Left - Chat History Sidebar */}
+              <div className="w-1/3 bg-gradient-to-b from-[#F32D17] to-[#C1000F] text-white flex flex-col py-4">
+                <div className="flex items-center justify-between px-4 mb-4">
+                  <h3 className="text-sm font-medium text-white">Chat History</h3>
+                  <button 
+                    onClick={startNewChat}
+                    className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded"
+                  >
+                    New Chat
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1 px-2 overflow-y-auto">
+                  {chatHistory.length === 0 ? (
+                    <p className="px-3 py-2 text-sm text-white/70">No conversations yet</p>
+                  ) : (
+                    chatHistory.map((chatItem) => (
+                      <div
+                        key={chatItem.id}
+                        onClick={() => {
+                          setCurrentChatId(chatItem.id);
+                        }}
+                        className={`px-3 py-2 rounded-lg cursor-pointer hover:bg-white/20 ${
+                          currentChatId === chatItem.id ? 'bg-white/30' : ''
+                        }`}
+                      >
+                        <div className="text-sm font-medium truncate">{chatItem.title}</div>
+                        <div className="text-xs text-white/70 truncate">{chatItem.lastMessage}</div>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Right - Main Chat Area */}
+              <div className="flex flex-1 flex-col bg-white/10 p-4 relative">
+                {chat.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center h-full">
+                    <svg width="147" height="147" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.7" />
+                    </svg>
+                    <p className="text-md text-white bg-white/20 p-2 px-5 rounded-full mt-9 w-full text-center">Bored? Let's mess things😏</p>
+                    <p className="text-md text-white bg-white/20 p-2 px-5 rounded-full mt-3 w-full text-center">In chef mode? Just ask my lord🧎‍♂️</p>
+                  </div>
+                ) : (
+                  <div className="flex-1 mb-4 overflow-y-auto">
+                    {chat.map((msg, idx) => (
+                      <div
+                        key={idx}
+                        className={`flex mb-3 ${msg.sender === 'batbot' ? 'justify-start' : 'justify-end'}`}
+                      >
+                        <div
+                          className={`max-w-[80%] px-4 py-2 rounded-xl text-sm ${
+                            msg.sender === 'batbot' 
+                              ? 'bg-white/30 text-white' 
+                              : 'bg-white/20 text-white'
+                          }`}
+                        >
+                          {msg.text}
+                        </div>
+                      </div>
+                    ))}
+                    {isLoading && (
+                      <div className="flex justify-start mb-3">
+                        <div className="bg-white/30 text-white px-4 py-2 rounded-xl text-sm">
+                          🦇 Analyzing...
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Chat Input */}
+                <form onSubmit={handleAskBatBot} className="flex items-center w-full max-w-sm px-4 py-2 mt-auto bg-white rounded-full shadow-inner">
+                  <input 
+                    type="text" 
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="BatBot at your service👾..." 
+                    className="flex-1 outline-none text-sm text-[#5E000C] placeholder-gray-500" 
+                  />
+                  <button 
+                    type="submit"
+                    disabled={isLoading}
+                    className="ml-2 w-8 h-8 bg-[#FD8839] rounded-full flex items-center justify-center hover:bg-[#F32D17] text-white"
+                  >
+                    {isLoading ? '...' : '↑'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>

@@ -8,65 +8,6 @@ function NotificationsPanel({ onCreateGroup }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updateMessage, setUpdateMessage] = useState('');
-  const [friendsList, setFriendsList] = useState([]);
-
-  // Fetch friends list
-  // useEffect(() => {
-  //   if (!currentUser) return;
-
-  //   const unsubscribeFriends = onSnapshot(
-  //     doc(db, 'users', currentUser.uid),
-  //     (doc) => {
-  //       if (doc.exists()) {
-  //         setFriendsList(doc.data().friends || []);
-  //       }
-  //     }
-  //   );
-
-  //   return () => unsubscribeFriends();
-  // }, [currentUser]);
-
-  // // Fetch notifications
-  // useEffect(() => {
-  //   if (!currentUser || friendsList.length === 0) return;
-
-  //   const q = query(
-  //     collectionGroup(db, 'updates'),
-  //     orderBy('timestamp', 'desc'),
-  //     limit(10)
-  //   );
-
-  //   const unsubscribe = onSnapshot(q, (snapshot) => {
-  //     const recentUpdates = snapshot.docs
-  //       .map(doc => {
-  //         const data = doc.data();
-  //         return {
-  //           id: doc.id,
-  //           message: data.message,
-  //           senderId: data.senderId,
-  //           senderName: data.senderName || 'Anonymous',
-  //           timestamp: data.timestamp?.toDate() || new Date(),
-  //         };
-  //       })
-  //       .filter(update => 
-  //         // Show updates from friends or from current user's groups
-  //         friendsList.includes(update.senderId) || 
-  //         update.senderId === currentUser.uid
-  //       );
-
-  //     setNotifications(recentUpdates);
-  //     setLoading(false);
-  //   }, (error) => {
-  //     console.error("Error fetching notifications:", error);
-  //     setLoading(false);
-  //   });
-
-  //   return () => unsubscribe();
-  // }, [currentUser, friendsList]);
-
-  // const formatTime = (date) => {
-  //   return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  // };
 
   const handlePostUpdate = async (e) => {
     e.preventDefault();
@@ -86,70 +27,70 @@ function NotificationsPanel({ onCreateGroup }) {
   };
   
   useEffect(() => {
-  if (!currentUser) return;
+    if (!currentUser) return;
 
-  const q = query(
-    collectionGroup(db, 'updates'),
-    orderBy('timestamp', 'desc'),
-    limit(10)
-  );
+    const q = query(
+      collectionGroup(db, 'updates'),
+      orderBy('timestamp', 'desc'),
+      limit(10)
+    );
 
-  const unsubscribe = onSnapshot(q, (snapshot) => {
-    const recentUpdates = snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
-        id: doc.id,
-        message: data.message,
-        senderId: data.senderId,
-        senderName: data.senderName || 'Anonymous',
-        timestamp: data.timestamp?.toDate() || new Date(),
-      };
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const recentUpdates = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          message: data.message,
+          senderId: data.senderId,
+          senderName: data.senderName || 'Anonymous',
+          timestamp: data.timestamp?.toDate() || new Date(),
+        };
+      });
+
+      setNotifications(recentUpdates);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
+      setLoading(false);
     });
 
-    // Temporarily show all updates regardless of sender
-    // .filter(update => friendsList.includes(update.senderId) || update.senderId === currentUser.uid)
+    return () => unsubscribe();
+  }, [currentUser]);
 
-    setNotifications(recentUpdates);
-    setLoading(false);
-  }, (error) => {
-    console.error("Error fetching notifications:", error);
-    setLoading(false);
-  });
-
-  return () => unsubscribe();
-}, [currentUser]);
-
+  const formatTime = (date) => {
+    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
 
   return (
     <div className="space-y-4">
       {/* Notifications Panel */}
-      <div className="bg-[#EEEEFF] p-4 rounded-2xl shadow-lg min-h-[350px] relative"
-           style={{ boxShadow: '0px 4px 15px 5px rgba(97, 99, 168, 0.3)' }}>
-        <h4 className="text-[#6366F1] font-medium mb-3 text-lg">Recent Activity</h4>
+      <div className="bg-gradient-to-br from-[#FD8839] to-[#F32D17] p-4 rounded-2xl shadow-lg min-h-[350px] relative text-white"
+           style={{ boxShadow: '0px 4px 15px 5px rgba(193, 0, 15, 0.3)' }}>
+        <h4 className="text-white font-medium mb-3 text-lg">Recent Activity</h4>
         
         {loading ? (
           <div className="flex items-center justify-center h-40">
-            <p>Loading notifications...</p>
+            <p className="text-white/80">Loading notifications...</p>
           </div>
         ) : notifications.length === 0 ? (
-          <p className="py-8 text-center text-gray-500">No recent activity</p>
+          <p className="py-8 text-center text-white/70">No recent activity</p>
         ) : (
           <ul className="space-y-3 max-h-[250px] overflow-y-auto">
             {notifications.map((notification) => (
               <li 
                 key={notification.id} 
-                className="flex items-start gap-3 px-3 py-2 text-sm transition-colors bg-white rounded-lg shadow-sm hover:bg-gray-50"
+                className="flex items-start gap-3 px-3 py-2 text-sm transition-colors bg-white/20 rounded-lg shadow-sm hover:bg-white/30"
               >
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-[#E0E0FF] flex items-center justify-center text-[#3C3E87] font-bold text-xs">
+                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-white font-bold text-xs">
                   {notification.senderName.substring(0, 2).toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-[#3C3E87] truncate">
+                  <p className="font-medium text-white truncate">
                     {notification.senderId === currentUser?.uid ? 'You' : notification.senderName}
                   </p>
-                  <p className="text-gray-600 truncate">{notification.message}</p>
+                  <p className="text-white/80 truncate">{notification.message}</p>
                 </div>
-                <div className="self-center text-xs text-gray-400">
+                <div className="self-center text-xs text-white/60">
                   {formatTime(notification.timestamp)}
                 </div>
               </li>
@@ -164,11 +105,11 @@ function NotificationsPanel({ onCreateGroup }) {
             placeholder="Notify something emergency..."
             value={updateMessage}
             onChange={(e) => setUpdateMessage(e.target.value)}
-            className="flex-1 p-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6163A8]"
+            className="flex-1 p-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/70"
           />
           <button 
             type="submit"
-            className="px-4 py-2 text-sm text-white bg-[#6163A8] rounded-lg hover:bg-[#4a4c8a] transition-colors"
+            className="px-4 py-2 text-sm text-white bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
           >
             POST
           </button>
@@ -176,13 +117,13 @@ function NotificationsPanel({ onCreateGroup }) {
       </div>
 
       {/* CTA Box */}
-      <div className="flex items-center justify-between p-4 bg-[#EEEEFF] rounded-2xl shadow-lg">
-        <p className="text-sm text-[#757575]">
+      <div className="flex items-center justify-between p-4 bg-gradient-to-br from-[#F32D17] to-[#C1000F] rounded-2xl shadow-lg text-white">
+        <p className="text-sm">
           Join your Roomies,<br />dare your friends!
         </p>
         <button 
           onClick={onCreateGroup}
-          className="text-sm px-4 py-2 rounded-xl text-white bg-gradient-to-r from-[#5C3CFF] to-[#E44B88] shadow-md hover:shadow-lg transition-all"
+          className="text-sm px-4 py-2 rounded-xl text-white bg-white/20 shadow-md hover:bg-white/30 transition-all"
         >
           New Group
         </button>
