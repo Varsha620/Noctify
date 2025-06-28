@@ -2,27 +2,20 @@ import { useState, useEffect, useRef } from 'react';
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import ChatCard from '../components/ChatCard';
+import NotificationsPanel from '../components/NotificationPanel';
+import NewGroupModal from '../components/NewGroupModal';
 import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from '../context/AuthContext';
-import NewGroupModal from '../components/NewGroupModal';
 
 function NotifyFriends() {
   const { currentUser } = useAuth();
   const [messages, setMessages] = useState([]);
   const [groups, setGroups] = useState([]);
   const [newMessage, setNewMessage] = useState('');
-  const [activeGroupId, setActiveGroupId] = useState('room-t60');
+  const [activeGroupId, setActiveGroupId] = useState(null);
   const [isGroupModalOpen, setGroupModalOpen] = useState(false);
   const messagesEndRef = useRef(null);
-
-  const updates = [
-    { message: 'Warden on rounds 🐭', initial: 'VS' },
-    { message: 'Maggie on floor 2..Rush🍜', initial: 'AR' },
-    { message: 'Guys I reached home😘', initial: 'RO' },
-    { message: 'Let me know when u r free...lets study', initial: 'AL' },
-    { message: 'Guys I reached home😘', initial: 'NS' },
-  ];
 
   // Auto-scroll to bottom when messages update
   useEffect(() => {
@@ -59,10 +52,13 @@ function NotifyFriends() {
         ...doc.data(),
       }));
       setGroups(groupsData);
+      // Set first group as active if none is selected
+      if (!activeGroupId && groupsData.length > 0) {
+        setActiveGroupId(groupsData[0].id);
+      }
     });
     return () => unsub();
   }, []);
-  
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -73,7 +69,7 @@ function NotifyFriends() {
       await addDoc(collection(db, "groups", activeGroupId, "messages"), {
         text: newMessage,
         senderId: currentUser.uid,
-        senderName: currentUser.name || currentUser.email || 'Anonymous',
+        senderName: currentUser.displayName || currentUser.email.split('@')[0],
         timestamp: serverTimestamp(),
       });
       setNewMessage('');
@@ -81,29 +77,24 @@ function NotifyFriends() {
       console.error("Error sending message:", error);
     }
   };
-  
-  
 
-
-  const activeGroup = groups.find(group => group.id === activeGroupId) || { name: 'Loading...', members: [] };
+  const activeGroup = groups.find(group => group.id === activeGroupId) || { name: 'Select a chat', members: [] };
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-white md:flex-row">
-      {/* Sidebar */}
       <div className="hidden md:flex">
         <Sidebar />
       </div>
 
-      {/* Main Content */}
       <div className="flex flex-col w-full p-4 pb-20 md:pb-4">
         <Navbar />
-        <h2 className="text-2xl md:text-3xl font-light text-[#424495] mt-6 mb-4 ml-2 animate-fadeInUp">
+        <h2 className="text-2xl md:text-3xl font-light text-[#424495] mt-6 mb-4 ml-2">
           NOTIFY YOUR FRIENDS
         </h2>
 
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Chat Section */}
-          <div className="flex flex-1 rounded-2xl bg-[#EEEEFF] shadow-lg overflow-hidden min-h-[500px] border-[#6163A8] border-[1px] animate-fadeInUp" style={{ boxShadow: '0px 4px 15px 5px #6163A8' }}>
+          <div className="flex flex-1 rounded-2xl bg-[#EEEEFF] shadow-lg overflow-hidden min-h-[500px] border-[#6163A8] border-[1px]">
             {/* Left - Recent Chats */}
             <div className="w-1/3 bg-[#424395df] text-white flex flex-col py-4 rounded-l-lg">
               <h3 className="flex items-center gap-2 pl-2 mb-4 text-xs font-medium text-white md:pl-4 md:text-sm">
@@ -113,11 +104,12 @@ function NotifyFriends() {
                 Recent Chats
               </h3>
               <div className="flex flex-col gap-2 px-1 overflow-y-auto md:px-2 max-h-96">
-                {groups.map((group, index) => (
+                {groups.map((group) => (
                   <div
                     key={group.id}
-                    className={`animate-slideInLeft px-2 py-1 rounded-md cursor-pointer transition-colors ${activeGroupId === group.id ? 'bg-[#6163A8]' : 'hover:bg-[#6163A8]/70'}`}
-                    style={{ animationDelay: `${0.1 * index}s` }}
+                    className={`px-2 py-1 rounded-md cursor-pointer transition-colors ${
+                      activeGroupId === group.id ? 'bg-[#6163A8]' : 'hover:bg-[#6163A8]/70'
+                    }`}
                     onClick={() => setActiveGroupId(group.id)}
                   >
                     <ChatCard
@@ -131,22 +123,22 @@ function NotifyFriends() {
               </div>
             </div>
 
-
             {/* Middle - Chat UI */}
             <div className="flex flex-1 flex-col justify-end items-center bg-[#EEEEFF] p-2 md:p-4 relative">
               <div className="w-full px-4 py-2 bg-[#424395] text-white rounded-t-lg">
                 <h3 className="text-sm font-medium">{activeGroup.name}</h3>
                 <p className="text-xs opacity-80">{activeGroup.members.length} members</p>
               </div>
-
+              
               <div className="flex flex-col justify-end flex-1 w-full p-4 space-y-2 overflow-y-auto">
-                {messages.map((msg, index) => (
+                {messages.map((msg) => (
                   <div
-                    key={index}
-                    className={`self-start px-3 py-2 rounded-xl max-w-[70%] text-sm ${msg.senderId === currentUser?.uid
-                        ? 'bg-[#168594] self-end text-right'
-                        : 'bg-[#5353ff] text-left'
-                      }`}
+                    key={msg.id}
+                    className={`self-start px-3 py-2 rounded-xl max-w-[70%] text-sm ${
+                      msg.senderId === currentUser?.uid
+                        ? 'bg-[#5353ff] self-end text-right'
+                        : 'bg-[#168594] text-left'
+                    }`}
                   >
                     <p className="mb-1 text-xs font-bold text-[#bcbcff]">
                       {msg.senderId === currentUser?.uid ? 'You' : msg.senderName}
@@ -159,51 +151,26 @@ function NotifyFriends() {
 
               <form onSubmit={handleSendMessage} className="flex items-center w-full max-w-sm px-3 md:px-4 py-2 mt-4 bg-white rounded-full shadow-inner border border-[#6366F1]">
                 <input
-                  type="text" 
-                  placeholder="Notify something exciting✨..." 
+                  type="text"
+                  placeholder="Notify something exciting..."
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)} 
-                  className="flex-1 outline-none text-sm text-[#3C3E87] placeholder-[#787bd6b0]" 
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="flex-1 outline-none text-sm text-[#3C3E87] placeholder-[#787bd6b0]"
                 />
-                <button type="submit" className="ml-2 w-8 h-8 bg-[#BDBDFE] rounded-full flex items-center justify-center hover:bg-[#9B9BFE] transition-all duration-200 transform hover:scale-110 active:scale-95">
+                <button type="submit" className="ml-2 w-8 h-8 bg-[#BDBDFE] rounded-full flex items-center justify-center hover:bg-[#9B9BFE] transition-all">
                   ↑
                 </button>
               </form>
             </div>
           </div>
 
-          {/* Right Column: Updates + CTA */}
-          <div className="flex flex-col justify-between gap-4 w-full lg:w-[28%]">
-            {/* Latest Updates */}
-            <div className="bg-[#EEEEFF] p-4 rounded-2xl shadow-lg animate-fadeInUp" style={{ boxShadow: '0px 4px 15px 5px #6163A8', animationDelay: '0.2s' }}>
-              <h4 className="text-[#6366F1] text-base md:text-lg font-medium mb-3">Latest updates</h4>
-              <ul className="space-y-3 overflow-y-auto max-h-64">
-                {updates.map((update, i) => (
-                  <li key={i} className="flex items-center justify-between px-3 py-2 text-xs transition-all duration-200 transform bg-white rounded-lg shadow-sm md:px-4 md:text-sm animate-slideInRight hover:scale-105" style={{ animationDelay: `${0.1 * i}s` }}>
-                    <span className="flex-1 mr-2">{update.message}</span>
-                    <span className="text-[10px] px-2 py-0.5 bg-[#E0E0FF] text-[#3C3E87] rounded-full flex-shrink-0">{update.initial}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            {/* CTA Box */}
-            <div className="bg-[#EEEEFF] px-4 md:px-5 py-4 rounded-2xl shadow-lg flex flex-col justify-between animate-fadeInUp" style={{ boxShadow: '0px 4px 15px 5px #6163A8', animationDelay: '0.3s' }}>
-              <p className="text-base md:text-lg text-[#757575] mb-3">
-                Create a new group chat with your friends!
-              </p>
-              <button 
-                onClick={() => setGroupModalOpen(true)} 
-                className="self-end text-sm px-4 md:px-5 py-2 rounded-xl text-white bg-gradient-to-r from-[#5C3CFF] to-[#E44B88] shadow-md transform transition-all duration-200 hover:scale-105 active:scale-95"
-              >
-                New Group +
-              </button>
-            </div>
+          {/* Right Column */}
+          <div className="w-full lg:w-[28%]">
+            <NotificationsPanel onCreateGroup={() => setGroupModalOpen(true)} />
           </div>
         </div>
       </div>
 
-      {/* New Group Modal */}
       <NewGroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setGroupModalOpen(false)}
