@@ -20,7 +20,13 @@ function BatBot() {
     setIsLoading(true);
 
     try {
-      const res = await fetch('https://us-central1-noctify-43111.cloudfunctions.net/batBot', {
+      // Use local development endpoint instead of Firebase Cloud Function
+      const isDevelopment = import.meta.env.DEV;
+      const apiUrl = isDevelopment 
+        ? '/api/batbot' 
+        : 'https://us-central1-noctify-43111.cloudfunctions.net/batBot';
+
+      const res = await fetch(apiUrl, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
