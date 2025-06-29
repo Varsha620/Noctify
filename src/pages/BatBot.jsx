@@ -10,33 +10,37 @@ function BatBot() {
   const [currentChatId, setCurrentChatId] = useState(null);
 
   const handleAskBatBot = async (e) => {
-    e.preventDefault();
-    if (!input.trim()) return;
+  e.preventDefault();
+  if (!input.trim()) return;
 
-    const userMsg = input;
-    const updatedChat = [...chat, { sender: 'user', text: userMsg }];
-    setChat(updatedChat);
-    setInput('');
-    setIsLoading(true);
+  const userMsg = input;
+  const updatedChat = [...chat, { sender: 'user', text: userMsg }];
+  setChat(updatedChat);
+  setInput('');
+  setIsLoading(true);
 
-    try {
-      const res = await fetch('/api/batbot', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ prompt: userMsg }),
-      });
+  try {
+    const res = await fetch('https://us-central1-noctify-43111.cloudfunctions.net/batBot', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ prompt: userMsg }),
+    });
 
-      if (!res.ok) {
-        throw new Error('Network response was not ok');
-      }
+    const data = await res.json();
+    
+    if (!res.ok) {
+      throw new Error(data.error || 'BatBot is unavailable');
+    }
 
-      const data = await res.json();
-      const finalChat = [...updatedChat, { sender: 'batbot', text: data.reply }];
-      setChat(finalChat);
+    const finalChat = [...updatedChat, { 
+      sender: 'batbot', 
+      text: data.reply || "No response from BatBot" 
+    }];
+    setChat(finalChat);
 
-      // Update chat history
+    // Update chat history
       if (!currentChatId) {
         const newChatId = Date.now();
         setCurrentChatId(newChatId);
@@ -61,12 +65,15 @@ function BatBot() {
         );
       }
     } catch (error) {
-      console.error('Error:', error);
-      setChat(prev => [...prev, { sender: 'batbot', text: "Sorry, I encountered an error. Please try again." }]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
+    console.error('BatBot error:', error);
+    setChat(prev => [...prev, { 
+      sender: 'batbot', 
+      text: error.message || "The Bat-Signal is down! Try again later." 
+    }]);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   const startNewChat = () => {
     setChat([]);
