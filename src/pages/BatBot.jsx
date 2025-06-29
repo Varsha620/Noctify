@@ -20,10 +20,10 @@ function BatBot() {
     setIsLoading(true);
 
     try {
-      // Use local development endpoint instead of Firebase Cloud Function
+      // Use Firebase Functions emulator endpoint for development
       const isDevelopment = import.meta.env.DEV;
       const apiUrl = isDevelopment 
-        ? '/api/batbot' 
+        ? 'http://localhost:5001/noctify-43111/us-central1/batBot'
         : 'https://us-central1-noctify-43111.cloudfunctions.net/batBot';
 
       const res = await fetch(apiUrl, {
