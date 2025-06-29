@@ -9,11 +9,11 @@ export default defineConfig({
       registerType: 'autoUpdate',
       includeAssets: ['favicon.svg', 'robots.txt', 'apple-touch-icon.png'],
       manifest: {
-        name: 'Noctify',
+        name: 'Noctify - Your Smart Companion',
         short_name: 'Noctify',
-        description: 'Your smart hostel companion!',
-        theme_color: '#ffffff',
-        background_color: '#eeeeff',
+        description: 'Your smart companion for daily life - track expenses, exams, and stay connected!',
+        theme_color: '#FD8839',
+        background_color: '#ffffff',
         display: 'standalone',
         start_url: '/',
         icons: [
@@ -34,6 +34,9 @@ export default defineConfig({
             purpose: 'any maskable'
           }
         ]
+      },
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg}']
       }
     }),
   ]

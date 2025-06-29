@@ -48,14 +48,14 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-30 backdrop-blur-sm">
       <div className="w-full max-w-md p-6 bg-white shadow-lg rounded-xl">
-        <h3 className="text-xl font-semibold mb-4 text-[#3C3E87]">Add New Bill</h3>
+        <h3 className="text-xl font-semibold mb-4 text-[#5E000C]">Add New Bill</h3>
         <form onSubmit={handleFormSubmit} className="flex flex-col gap-3">
           <input
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
             placeholder="Enter amount"
-            className="p-2 border rounded"
+            className="p-2 border border-[#FD8839] rounded-lg focus:ring-2 focus:ring-[#F32D17] focus:border-transparent"
             required
           />
           <input
@@ -63,7 +63,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder="Description"
-            className="p-2 border rounded"
+            className="p-2 border border-[#FD8839] rounded-lg focus:ring-2 focus:ring-[#F32D17] focus:border-transparent"
             required
           />
           <label className="flex items-center gap-2 text-sm">
@@ -81,7 +81,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
                 multiple 
                 value={splitTo} 
                 onChange={handleSplitChange}
-                className="h-32 p-2 border rounded"
+                className="h-32 p-2 border border-[#FD8839] rounded-lg focus:ring-2 focus:ring-[#F32D17] focus:border-transparent"
               >
                 {allUsers.map(user => (
                   <option key={user.id} value={user.name}>
@@ -103,7 +103,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
             </button>
             <button
               type="submit"
-              className="bg-[#3C3E87] hover:bg-[#2a2b65] text-white px-4 py-2 rounded"
+              className="bg-gradient-to-r from-[#FD8839] to-[#F32D17] hover:from-[#F32D17] hover:to-[#C1000F] text-white px-4 py-2 rounded"
             >
               Save Bill
             </button>

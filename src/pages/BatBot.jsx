@@ -8,6 +8,7 @@ function BatBot() {
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
+  const [showHistory, setShowHistory] = useState(false);
 
   const handleAskBatBot = async (e) => {
   e.preventDefault();
@@ -19,6 +20,13 @@ function BatBot() {
   setInput('');
   setIsLoading(true);
 
+    try {
+      // Simulate API call for demo
+      setTimeout(() => {
+        const botResponse = `🦇 Greetings, citizen! As the Dark Knight of Gotham, I've analyzed your query: "${userMsg}". The shadows whisper that you seek wisdom, and I shall provide it with the precision of a batarang. Remember, it's not who I am underneath, but what I do that defines me. Stay vigilant! 🌃`;
+        
+        const finalChat = [...updatedChat, { sender: 'batbot', text: botResponse }];
+        setChat(finalChat);
   try {
     const res = await fetch('https://us-central1-noctify-43111.cloudfunctions.net/batBot', {
       method: 'POST',
@@ -40,6 +48,32 @@ function BatBot() {
     }];
     setChat(finalChat);
 
+        // Update chat history
+        if (!currentChatId) {
+          const newChatId = Date.now();
+          setCurrentChatId(newChatId);
+          setChatHistory(prev => [
+            ...prev,
+            {
+              id: newChatId,
+              title: userMsg.substring(0, 30),
+              lastMessage: botResponse.substring(0, 50)
+            }
+          ]);
+        } else {
+          setChatHistory(prev =>
+            prev.map(item =>
+              item.id === currentChatId
+                ? {
+                    ...item,
+                    lastMessage: botResponse.substring(0, 50)
+                  }
+                : item
+            )
+          );
+        }
+        setIsLoading(false);
+      }, 1000);
     // Update chat history
       if (!currentChatId) {
         const newChatId = Date.now();
@@ -65,6 +99,11 @@ function BatBot() {
         );
       }
     } catch (error) {
+      console.error('Error:', error);
+      setChat(prev => [...prev, { sender: 'batbot', text: "🦇 The Bat-Computer is experiencing technical difficulties. Even Batman needs tech support sometimes! 🔧" }]);
+      setIsLoading(false);
+    }
+  };
     console.error('BatBot error:', error);
     setChat(prev => [...prev, { 
       sender: 'batbot', 
@@ -90,7 +129,7 @@ function BatBot() {
       {/* Main Content */}
       <div className="flex flex-col w-full p-4">
         <Navbar />
-        <h2 className="text-3xl font-light text-[#424495] mt-6 mb-4 ml-2">"Call me Bat-Bot"</h2>
+        <h2 className="text-3xl font-light text-[#5E000C] mt-6 mb-4 ml-2">"Call me Bat-Bot"</h2>
 
         <div className="flex flex-col gap-6 md:flex-row">
           {/* Chat Section */}
@@ -156,23 +195,24 @@ function BatBot() {
                 </div>
               )}
 
-              {/* Chat Input */}
-              <form onSubmit={handleAskBatBot} className="flex items-center w-full max-w-sm px-4 py-2 mt-auto bg-white rounded-full shadow-inner">
-                <input 
-                  type="text" 
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="BatBot at your service👾..." 
-                  className="flex-1 outline-none text-sm text-[#3C3E87] placeholder-[#787bd6b0]" 
-                />
-                <button 
-                  type="submit"
-                  disabled={isLoading}
-                  className="ml-2 w-8 h-8 bg-[#BDBDFE] rounded-full flex items-center justify-center hover:bg-[#9B9BFE]"
-                >
-                  {isLoading ? '...' : '↑'}
-                </button>
-              </form>
+                {/* Chat Input */}
+                <form onSubmit={handleAskBatBot} className="flex items-center w-full max-w-sm px-4 py-2 mt-auto bg-white rounded-full shadow-inner">
+                  <input 
+                    type="text" 
+                    value={input}
+                    onChange={(e) => setInput(e.target.value)}
+                    placeholder="BatBot at your service👾..." 
+                    className="flex-1 outline-none text-sm text-[#5E000C] placeholder-gray-500" 
+                  />
+                  <button 
+                    type="submit"
+                    disabled={isLoading}
+                    className="ml-2 w-8 h-8 bg-[#FD8839] rounded-full flex items-center justify-center hover:bg-[#F32D17] text-white"
+                  >
+                    {isLoading ? '...' : '↑'}
+                  </button>
+                </form>
+              </div>
             </div>
           </div>
         </div>

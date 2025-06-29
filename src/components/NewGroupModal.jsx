@@ -7,18 +7,23 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
   const [groupName, setGroupName] = useState('');
   const [allUsers, setAllUsers] = useState([]);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
+  const [selectedAvatar, setSelectedAvatar] = useState('👥');
   const [error, setError] = useState('');
   const { currentUser } = useAuth();
 
+  const avatarOptions = ['👥', '🎉', '🚀', '💼', '🎓', '🏠', '🎮', '🍕', '📚', '💪', '🎵', '🌟', '🔥', '⚡', '🎯', '🏆'];
+
   useEffect(() => {
     const fetchUsers = async () => {
+      if (!currentUser) return;
+      
       const snapshot = await getDocs(collection(db, 'users'));
       const usersList = snapshot.docs
         .map(doc => ({ uid: doc.id, ...doc.data() }))
         .filter(user => user.uid !== currentUser.uid); // exclude self
       setAllUsers(usersList);
     };
-    if (isOpen) fetchUsers();
+    if (isOpen && currentUser) fetchUsers();
   }, [isOpen, currentUser]);
 
   const handleAddMember = (e) => {
@@ -44,12 +49,19 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
       return;
     }
 
+    if (!currentUser) {
+      setError('User not authenticated');
+      return;
+    }
+
     onCreate({
       groupName,
-      members: [currentUser.uid, ...selectedUserIds]
+      members: [currentUser.uid, ...selectedUserIds],
+      avatar: selectedAvatar
     });
     setGroupName('');
     setSelectedUserIds([]);
+    setSelectedAvatar('👥');
     setError('');
   };
 
@@ -58,7 +70,7 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
       <div className="bg-white p-6 rounded-xl w-[90%] max-w-md shadow-lg">
-        <h2 className="text-lg font-semibold mb-4 text-[#3C3E87]">Create New Group</h2>
+        <h2 className="text-lg font-semibold mb-4 text-[#5E000C]">Create New Group</h2>
 
         {error && <p className="mb-3 text-sm text-red-500">{error}</p>}
 
@@ -67,14 +79,33 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
           placeholder="Group Name"
           value={groupName}
           onChange={(e) => setGroupName(e.target.value)}
-          className="w-full p-2 mb-4 border rounded"
+          className="w-full p-2 mb-4 border border-[#FD8839] rounded-lg focus:ring-2 focus:ring-[#F32D17] focus:border-transparent"
         />
 
+        {/* Avatar Selection */}
         <div className="mb-4">
-          <h3 className="text-sm font-medium text-[#3C3E87] mb-2">Add Members</h3>
+          <h3 className="text-sm font-medium text-[#5E000C] mb-2">Choose Group Avatar</h3>
+          <div className="grid grid-cols-8 gap-2">
+            {avatarOptions.map((avatar, index) => (
+              <button
+                key={index}
+                type="button"
+                onClick={() => setSelectedAvatar(avatar)}
+                className={`w-8 h-8 rounded-full text-lg hover:bg-gradient-to-r hover:from-[#FD8839]/20 hover:to-[#F32D17]/20 transition-all duration-200 ${
+                  selectedAvatar === avatar ? 'bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white' : 'bg-gray-100'
+                }`}
+              >
+                {avatar}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mb-4">
+          <h3 className="text-sm font-medium text-[#5E000C] mb-2">Add Members</h3>
           <select
             onChange={handleAddMember}
-            className="w-full p-2 mb-2 border rounded"
+            className="w-full p-2 mb-2 border border-[#FD8839] rounded-lg focus:ring-2 focus:ring-[#F32D17] focus:border-transparent"
             defaultValue=""
           >
             <option value="" disabled>Select a user to add</option>
@@ -94,12 +125,12 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
                 {selectedUserIds.map(uid => {
                   const user = allUsers.find(u => u.uid === uid);
                   return (
-                    <li key={uid} className="flex items-center justify-between p-1 pl-2 rounded bg-gray-50">
+                    <li key={uid} className="flex items-center justify-between p-1 pl-2 rounded bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10">
                       <span>{user?.displayName || user?.email}</span>
                       <button
                         type="button"
                         onClick={() => handleRemoveMember(uid)}
-                        className="text-red-500 hover:text-red-700"
+                        className="text-[#F32D17] hover:text-[#C1000F]"
                       >
                         ×
                       </button>
@@ -114,13 +145,13 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
         <div className="flex justify-end gap-2">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-gray-700 bg-gray-200 rounded"
+            className="px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
           >
             Cancel
           </button>
           <button
             onClick={handleCreateGroup}
-            className="px-4 py-2 bg-[#3C3E87] text-white rounded hover:bg-[#2a2b65]"
+            className="px-4 py-2 bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white rounded-lg hover:from-[#F32D17] hover:to-[#C1000F]"
           >
             Create
           </button>
