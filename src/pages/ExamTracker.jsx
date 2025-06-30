@@ -162,14 +162,14 @@ function ExamTracker() {
               <svg width="60" height="60" viewBox="0 0 75 75" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:w-[80px] md:h-[80px]">
                 <path d="M12.5 9.375H62.5C64.5833 9.375 66.25 11.0417 66.25 13.125V56.25C66.25 58.3333 64.5833 60 62.5 60H12.5C10.4167 60 8.75 58.3333 8.75 56.25V13.125C8.75 11.0417 10.4167 9.375 12.5 9.375ZM12.5 18.75V56.25H62.5V18.75H12.5ZM18.75 25H56.25V31.25H18.75V25ZM18.75 37.5H43.75V43.75H18.75V37.5ZM50 37.5H56.25V43.75H50V37.5Z" fill="white" />
               </svg>
-              <h2 className="text-2xl md:text-3xl font-bold text-white">Your Exams</h2>
+              <h2 className="text-2xl font-bold text-white md:text-3xl">Your Exams</h2>
             </div>
             
             {/* Mobile-friendly table */}
-            <div className="overflow-x-auto bg-white/10 rounded-xl p-4">
+            <div className="p-4 overflow-x-auto bg-white/10 rounded-xl">
               <table className="w-full text-center min-w-[600px]">
                 <thead>
-                  <tr className="text-white text-lg md:text-xl font-normal border-b border-white/30">
+                  <tr className="text-lg font-normal text-white border-b md:text-xl border-white/30">
                     <th className="py-3">Subject</th>
                     <th className="py-3">Exam Date</th>
                     <th className="py-3">Portions</th>
@@ -178,15 +178,15 @@ function ExamTracker() {
                 </thead>
                 <tbody className="text-white">
                   {exams.map(exam => (
-                    <tr key={exam.id} className="h-12 border-b border-white/20 hover:bg-white/10 transition-colors">
+                    <tr key={exam.id} className="h-12 transition-colors border-b border-white/20 hover:bg-white/10">
                       <td className="py-2">{exam.subject}</td>
                       <td className="py-2">{formatDate(exam.examDate)}</td>
                       <td className="py-2 max-w-[200px] truncate">{exam.portions || 'Not specified'}</td>
                       <td className="py-2">
-                        <div className="flex gap-2 justify-center">
+                        <div className="flex justify-center gap-2">
                           <button
                             onClick={() => handleEdit(exam)}
-                            className="px-3 py-1 bg-white/20 text-white rounded-lg hover:bg-white/30 transition-colors text-sm"
+                            className="px-3 py-1 text-sm text-white transition-colors rounded-lg bg-white/20 hover:bg-white/30"
                           >
                             Edit
                           </button>
@@ -228,16 +228,16 @@ function ExamTracker() {
             {/* Upcoming Exams */}
             <div className="bg-gradient-to-br from-[#FD8839] to-[#F32D17] p-4 rounded-xl shadow-md flex-1 animate-fadeInUp"
               style={{ boxShadow: '-5px 10px 30px #C1000F', animationDelay: '0.3s' }}>
-              <h3 className="text-xl text-white font-semibold mb-4">Upcoming Exams</h3>
+              <h3 className="mb-4 text-xl font-semibold text-white">Upcoming Exams</h3>
               <div className="space-y-3">
                 {upcomingExams.map((exam, index) => {
                   const daysUntil = getDaysUntilExam(exam.examDate);
                   return (
-                    <div key={exam.id} className="bg-white/20 rounded-lg p-3 animate-slideInRight" style={{ animationDelay: `${0.1 * index}s` }}>
-                      <div className="flex justify-between items-center">
+                    <div key={exam.id} className="p-3 rounded-lg bg-white/20 animate-slideInRight" style={{ animationDelay: `${0.1 * index}s` }}>
+                      <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="text-white font-medium">{exam.subject}</h4>
-                          <p className="text-white/80 text-sm">{formatDate(exam.examDate)}</p>
+                          <h4 className="font-medium text-white">{exam.subject}</h4>
+                          <p className="text-sm text-white/80">{formatDate(exam.examDate)}</p>
                         </div>
                         <span className={`px-3 py-1 text-xs text-white rounded-full ${getPillColor(daysUntil)} animate-pulse`}>
                           {daysUntil <= 0 ? 'Today' : `${daysUntil} days`}
@@ -247,7 +247,7 @@ function ExamTracker() {
                   );
                 })}
                 {upcomingExams.length === 0 && (
-                  <p className="text-white/70 text-center py-4">No upcoming exams</p>
+                  <p className="py-4 text-center text-white/70">No upcoming exams</p>
                 )}
               </div>
             </div>
@@ -259,10 +259,10 @@ function ExamTracker() {
                 <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" className="md:w-[40px] md:h-[40px]">
                   <path d="M12 2L13.09 8.26L22 9L13.09 9.74L12 16L10.91 9.74L2 9L10.91 8.26L12 2Z" fill="white" />
                 </svg>
-                <h3 className="text-white font-medium text-base md:text-lg">Study Tips</h3>
+                <h3 className="text-base font-medium text-white md:text-lg">Study Tips</h3>
               </div>
               
-              <div className="space-y-3 text-white/90 text-sm">
+              <div className="space-y-3 text-sm text-white/90">
                 <div className="flex items-start gap-2">
                   <span className="text-white">📚</span>
                   <p>Create a study schedule and stick to it</p>
@@ -321,7 +321,7 @@ function ExamTracker() {
               <div className="flex justify-between gap-3">
                 <button
                   type="button"
-                  className="flex-1 px-4 py-3 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-colors"
+                  className="flex-1 px-4 py-3 text-gray-700 transition-colors bg-gray-300 rounded-lg hover:bg-gray-400"
                   onClick={() => {
                     setShowModal(false);
                     setEditingExam(null);

@@ -11,7 +11,7 @@ function Card({ title, value, icon, onClick }) {
         <div className="flex items-center h-10 mt-2 mb-3 text-5xl text-white">{icon}</div>
         <div>
           <h2 className="text-[1.5rem] text-white/90 font-500 ml-3">{title}</h2>
-          <p className="text-2xl font-semibold text-white ml-3 mt-3">{value}</p>
+          <p className="mt-3 ml-3 text-2xl font-semibold text-white">{value}</p>
         </div>
       </div>
     </div>

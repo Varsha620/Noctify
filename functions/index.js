@@ -1,40 +1,28 @@
 const { onRequest } = require("firebase-functions/v2/https");
-const { defineSecret } = require("firebase-functions/params");
-const OpenAI = require("openai");
-const cors = require("cors")({ origin: true, methods: ["POST", "OPTIONS"] });
+const cors = require("cors")({ origin: true });
 
-const OPENAI_API_KEY = defineSecret("OPENAI_API_KEY");
-
-exports.batBot = onRequest({ secrets: [OPENAI_API_KEY] }, async (req, res) => {
-  if (req.method === "OPTIONS") {
-    return cors(req, res, () => res.status(204).send(""));
-  }
-
+exports.batBot = onRequest(async (req, res) => {
   return cors(req, res, async () => {
-  try {
-    const openai = new OpenAI({
-      apiKey: OPENAI_API_KEY.value(),
-    });
+    try {
+      const prompt = req.body.prompt?.toLowerCase() || "";
 
-    const prompt = req.body.prompt;
-    console.log("🔍 Incoming Prompt:", prompt);
+      let reply;
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-3.5-turbo",
-      messages: [{
-        role: "user",
-        content: `Pretend you're Batman. Respond funnily and smartly to: ${prompt}`,
-      }],
-    });
+      if (prompt.includes("pizza")) {
+        reply = "🦇 Justice tastes like pepperoni. Here's how to make it: dough, sauce, cheese, oven. Boom.";
+      } else if (prompt.includes("love")) {
+        reply = "🦇 Love? I don’t do soft. But I protect. Always.";
+      } else if (prompt.includes("exam") || prompt.includes("study")) {
+        reply = "🦇 Study like Gotham depends on it. Because it does.";
+      } else {
+        // Fun fallback
+        reply = `🦇 I'm Batman. Here's my take: "${prompt}"? Sounds like something only the Batmobile can handle.`;
+      }
 
-    const reply = completion.choices[0].message.content;
-    console.log("🦇 BatBot's Reply:", reply);
-
-    res.status(200).json({ reply });
-
-  } catch (error) {
-    console.error("❌ OpenAI Error:", error);
-    res.status(500).json({ error: "Bat-Computer crashed!" });
-  }
-});
+      res.status(200).json({ reply });
+    } catch (error) {
+      console.error("Mock BatBot Error:", error);
+      res.status(500).json({ error: "🦇 The Batcomputer crashed." });
+    }
+  });
 });

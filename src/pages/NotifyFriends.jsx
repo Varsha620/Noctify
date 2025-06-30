@@ -107,7 +107,7 @@ function NotifyFriends() {
                     <h3 className="text-sm font-medium text-white">Recent Chats</h3>
                     <button 
                       onClick={() => setGroupModalOpen(true)}
-                      className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded"
+                      className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30"
                     >
                       New Group
                     </button>
@@ -116,7 +116,7 @@ function NotifyFriends() {
                     {groups.map((group) => (
                       <div
                         key={group.id}
-                        className="px-2 py-1 rounded-md cursor-pointer transition-colors hover:bg-white/20"
+                        className="px-2 py-1 transition-colors rounded-md cursor-pointer hover:bg-white/20"
                         onClick={() => handleGroupSelect(group.id)}
                       >
                         <ChatCard
@@ -139,11 +139,11 @@ function NotifyFriends() {
                 </div>
               ) : (
                 // Chat View (Mobile)
-                <div className="flex flex-1 flex-col bg-white/10 relative">
+                <div className="relative flex flex-col flex-1 bg-white/10">
                   <div className="flex items-center justify-between w-full px-4 py-3 bg-gradient-to-r from-[#C1000F] to-[#5E000C] text-white">
                     <button 
                       onClick={() => setShowChatView(false)}
-                      className="text-white hover:bg-white/20 p-1 rounded"
+                      className="p-1 text-white rounded hover:bg-white/20"
                     >
                       ←
                     </button>
@@ -185,7 +185,7 @@ function NotifyFriends() {
                     <div ref={messagesEndRef} />
                   </div>
 
-                  <form onSubmit={handleSendMessage} className="flex items-center w-full px-3 py-2 mt-4 bg-white rounded-full shadow-inner border border-white/30 mx-4 mb-4">
+                  <form onSubmit={handleSendMessage} className="flex items-center w-full px-3 py-2 mx-4 mt-4 mb-4 bg-white border rounded-full shadow-inner border-white/30">
                     <input
                       type="text"
                       placeholder="Notify something exciting..."
@@ -202,14 +202,14 @@ function NotifyFriends() {
             </div>
 
             {/* Desktop: Show both groups list and chat */}
-            <div className="hidden md:flex w-full">
+            <div className="hidden w-full md:flex">
               {/* Left - Recent Chats */}
               <div className="w-1/3 bg-gradient-to-b from-[#F32D17] to-[#C1000F] text-white flex flex-col py-4 rounded-l-lg">
                 <div className="flex items-center justify-between px-4 mb-4">
                   <h3 className="text-sm font-medium text-white">Recent Chats</h3>
                   <button 
                     onClick={() => setGroupModalOpen(true)}
-                    className="text-xs bg-white/20 hover:bg-white/30 px-2 py-1 rounded"
+                    className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30"
                   >
                     New Group
                   </button>
@@ -236,14 +236,14 @@ function NotifyFriends() {
                       <svg width="60" height="60" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.5"/>
                       </svg>
-                      <p className="mt-4 text-center text-sm">No groups yet</p>
+                      <p className="mt-4 text-sm text-center">No groups yet</p>
                     </div>
                   )}
                 </div>
               </div>
 
               {/* Right - Main Chat Area */}
-              <div className="flex flex-1 flex-col bg-white/10 p-4 relative">
+              <div className="relative flex flex-col flex-1 p-4 bg-white/10">
                 {activeGroupId ? (
                   <>
                     <div className="w-full px-4 py-2 bg-gradient-to-r from-[#C1000F] to-[#5E000C] text-white rounded-t-lg">
@@ -284,7 +284,7 @@ function NotifyFriends() {
                       <div ref={messagesEndRef} />
                     </div>
 
-                    <form onSubmit={handleSendMessage} className="flex items-center w-full max-w-sm px-4 py-2 mt-auto bg-white rounded-full shadow-inner border border-white/30">
+                    <form onSubmit={handleSendMessage} className="flex items-center w-full max-w-sm px-4 py-2 mt-auto bg-white border rounded-full shadow-inner border-white/30">
                       <input
                         type="text"
                         placeholder="Notify something exciting..."

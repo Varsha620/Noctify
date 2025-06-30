@@ -101,7 +101,7 @@ function UserDropdown() {
       {/* Avatar Selection Modal */}
       {showAvatarModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white p-6 rounded-xl w-80 shadow-lg">
+          <div className="p-6 bg-white shadow-lg rounded-xl w-80">
             <h3 className="text-lg font-semibold text-[#5E000C] mb-4">Choose Your Avatar</h3>
             <div className="grid grid-cols-6 gap-3 mb-4">
               {avatarOptions.map((avatar, index) => (
@@ -119,7 +119,7 @@ function UserDropdown() {
             <div className="flex justify-end gap-2">
               <button
                 onClick={() => setShowAvatarModal(false)}
-                className="px-4 py-2 text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                className="px-4 py-2 text-gray-600 transition-colors rounded-lg hover:bg-gray-100"
               >
                 Cancel
               </button>
