@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar';
 import ChatCard from '../components/ChatCard';
 import NotificationsPanel from '../components/NotificationPanel';
 import NewGroupModal from '../components/NewGroupModal';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, getDocs } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from '../context/AuthContext';
 
@@ -16,12 +16,61 @@ function NotifyFriends() {
   const [activeGroupId, setActiveGroupId] = useState(null);
   const [isGroupModalOpen, setGroupModalOpen] = useState(false);
   const [showChatView, setShowChatView] = useState(false);
+  const [friends, setFriends] = useState([]);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when messages update
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Fetch user's friends for group creation
+  useEffect(() => {
+    const fetchFriends = async () => {
+      if (!currentUser) return;
+
+      try {
+        const friendsQuery1 = query(
+          collection(db, 'friends'),
+          where('user1', '==', currentUser.uid)
+        );
+        
+        const friendsQuery2 = query(
+          collection(db, 'friends'),
+          where('user2', '==', currentUser.uid)
+        );
+
+        const [snapshot1, snapshot2] = await Promise.all([
+          getDocs(friendsQuery1),
+          getDocs(friendsQuery2)
+        ]);
+
+        const friendsList = [];
+        
+        snapshot1.docs.forEach(doc => {
+          const data = doc.data();
+          friendsList.push({
+            uid: data.user2,
+            name: data.user2Name
+          });
+        });
+
+        snapshot2.docs.forEach(doc => {
+          const data = doc.data();
+          friendsList.push({
+            uid: data.user1,
+            name: data.user1Name
+          });
+        });
+
+        setFriends(friendsList);
+      } catch (error) {
+        console.error('Error fetching friends:', error);
+      }
+    };
+
+    fetchFriends();
+  }, [currentUser]);
 
   // Fetch messages for active group
   useEffect(() => {
@@ -45,17 +94,25 @@ function NotifyFriends() {
     return () => unsubscribe();
   }, [activeGroupId]);
 
-  // Fetch all groups
+  // Fetch user's groups (only groups where user is a member)
   useEffect(() => {
-    const unsub = onSnapshot(collection(db, 'groups'), (snapshot) => {
+    if (!currentUser) return;
+
+    const q = query(
+      collection(db, 'groups'),
+      where('members', 'array-contains', currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
       const groupsData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
       }));
       setGroups(groupsData);
     });
-    return () => unsub();
-  }, []);
+
+    return () => unsubscribe();
+  }, [currentUser]);
 
   const handleSendMessage = async (e) => {
     e.preventDefault();
@@ -188,7 +245,7 @@ function NotifyFriends() {
                   <form onSubmit={handleSendMessage} className="flex items-center w-full px-3 py-2 mx-4 mt-4 mb-4 bg-white border rounded-full shadow-inner border-white/30">
                     <input
                       type="text"
-                      placeholder="Notify something exciting..."
+                      placeholder="Type a message..."
                       value={newMessage}
                       onChange={(e) => setNewMessage(e.target.value)}
                       className="flex-1 outline-none text-sm text-[#5E000C] placeholder-gray-500"
@@ -260,7 +317,7 @@ function NotifyFriends() {
                       {messages.length === 0 ? (
                         <div className="flex flex-col items-center justify-center h-full text-white/70">
                           <svg width="100" height="100" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.5"/>
+                            <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.3"/>
                           </svg>
                           <p className="mt-4 text-center">No messages yet. Start the conversation!</p>
                         </div>
@@ -287,7 +344,7 @@ function NotifyFriends() {
                     <form onSubmit={handleSendMessage} className="flex items-center w-full max-w-sm px-4 py-2 mt-auto bg-white border rounded-full shadow-inner border-white/30">
                       <input
                         type="text"
-                        placeholder="Notify something exciting..."
+                        placeholder="Type a message..."
                         value={newMessage}
                         onChange={(e) => setNewMessage(e.target.value)}
                         className="flex-1 outline-none text-sm text-[#5E000C] placeholder-gray-500"
@@ -319,6 +376,7 @@ function NotifyFriends() {
       <NewGroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setGroupModalOpen(false)}
+        friends={friends}
         onCreate={async ({ groupName, members, avatar }) => {
           try {
             const docRef = await addDoc(collection(db, 'groups'), {

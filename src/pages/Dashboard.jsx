@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { db } from '../firebase'
-import { collection, getDocs, query, orderBy, limit } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit, collectionGroup, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 
 function Dashboard() {
@@ -16,6 +16,15 @@ function Dashboard() {
     nearestExam: 'No exams',
     recentNotifications: []
   });
+  const [userAvatar, setUserAvatar] = useState('👤');
+
+  // Load user avatar
+  useEffect(() => {
+    const savedAvatar = localStorage.getItem('userAvatar');
+    if (savedAvatar) {
+      setUserAvatar(savedAvatar);
+    }
+  }, []);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -48,17 +57,11 @@ function Dashboard() {
 
         const nearestExam = upcomingExams.length > 0 ? upcomingExams[0].subject : 'No exams';
 
-        // Fetch recent notifications
-        const notificationsSnapshot = await getDocs(
-          query(collection(db, 'notifications'), orderBy('timestamp', 'desc'), limit(3))
-        );
-        const notifications = notificationsSnapshot.docs.map(doc => doc.data());
-
         setDashboardData({
           monthlyExpense: monthlyTotal,
           upcomingExams: upcomingExams.length,
           nearestExam,
-          recentNotifications: notifications
+          recentNotifications: []
         });
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
@@ -66,6 +69,39 @@ function Dashboard() {
     };
 
     fetchDashboardData();
+  }, [currentUser]);
+
+  // Listen for real-time notifications from NotifyFriends
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const q = query(
+      collectionGroup(db, 'updates'),
+      orderBy('timestamp', 'desc'),
+      limit(5)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const recentUpdates = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          message: data.message,
+          senderId: data.senderId,
+          senderName: data.senderName || 'Anonymous',
+          timestamp: data.timestamp?.toDate() || new Date(),
+        };
+      });
+
+      setDashboardData(prev => ({
+        ...prev,
+        recentNotifications: recentUpdates
+      }));
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
+    });
+
+    return () => unsubscribe();
   }, [currentUser]);
 
   const formatTime = (date) => {
@@ -94,7 +130,7 @@ function Dashboard() {
                 <h1 className="ml-10 text-5xl font-300" >Hi, {currentUser?.displayName || 'User'}!</h1>
                 <p className="mt-4 ml-10 text-2xl text-md text-white/80">What are you doing today?</p>
                 {/* Chat prompt */}
-                <div className="flex items-center gap-4 mt-5 ml-9">
+                <div className="flex items-center gap-4 mt-5">
                   <svg width="55" height="75" viewBox="-20 0 60 40" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M30.1778 0.0603638C34.6374 2.92422 36.1239 7.22 36.1239 10.0838C36.1239 21.5393 36.1239 32.9947 33.1509 43.0182L31.6643 32.9947C27.2047 35.8585 21.2586 38.7224 18.2855 38.7224C15.3125 38.7224 9.36632 35.8585 4.90671 32.9947L3.42018 43.0182C0.447113 32.9947 0.447113 21.5393 0.447113 10.0838C0.447113 7.22 1.93365 2.92422 6.39325 0.0603638C4.90671 4.35614 4.90671 8.65192 6.39325 11.5158C12.3394 8.65192 24.2317 8.65192 30.1778 11.5158C31.6643 8.65192 31.6643 4.35614 30.1778 0.0603638ZM30.1778 22.9712C27.0468 27.1596 25.3466 28.0903 19.7721 30.1308C22.8845 32.9947 28.6448 32.055 31.6643 28.6989C32.9743 27.2401 32.2961 24.7074 30.1778 22.9712ZM6.39325 22.9712C4.27494 24.7074 3.59671 27.2401 4.90671 28.6989C7.92624 32.055 13.6866 32.9947 16.799 30.1308C11.2245 28.0903 9.52426 27.1596 6.39325 22.9712Z" fill="white"/>
                   </svg>
@@ -124,14 +160,25 @@ function Dashboard() {
                 </div>
                 <button className="text-sm text-[#FD8839]">See all</button>
               </div>
-              <ul className="mt-4 space-y-4">
+              <ul className="mt-4 space-y-4 overflow-y-auto max-h-80">
                 {dashboardData.recentNotifications.length > 0 ? (
                   dashboardData.recentNotifications.map((notification, index) => (
                     <li key={index} className="flex items-center justify-between bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 rounded-lg px-3 py-3"
                       style={{
                         boxShadow: '-8px 5px 10px rgba(253, 136, 57, 0.3)'
                       }}>
-                      <span className="text-[#5E000C]">{notification.message}</span>
+                      <div className="flex items-center gap-2">
+                        <div className="w-8 h-8 bg-gradient-to-r from-[#FD8839] to-[#F32D17] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                          {notification.senderName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-[#5E000C]">
+                            {notification.senderId === currentUser?.uid ? 'You' : notification.senderName}
+                          </p>
+                          <p className="text-xs text-gray-600">{notification.message}</p>
+                          <p className="text-xs text-gray-500">{formatTime(notification.timestamp)}</p>
+                        </div>
+                      </div>
                       <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FD8839] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <circle cx="12" cy="6" r="1.5"/>
                         <circle cx="12" cy="12" r="1.5"/>

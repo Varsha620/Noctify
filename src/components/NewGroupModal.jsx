@@ -1,30 +1,14 @@
 import { useEffect, useState } from 'react';
-import { collection, getDocs } from 'firebase/firestore';
-import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
-function NewGroupModal({ isOpen, onClose, onCreate }) {
+function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
   const [groupName, setGroupName] = useState('');
-  const [allUsers, setAllUsers] = useState([]);
   const [selectedUserIds, setSelectedUserIds] = useState([]);
   const [selectedAvatar, setSelectedAvatar] = useState('👥');
   const [error, setError] = useState('');
   const { currentUser } = useAuth();
 
   const avatarOptions = ['👥', '🎉', '🚀', '💼', '🎓', '🏠', '🎮', '🍕', '📚', '💪', '🎵', '🌟', '🔥', '⚡', '🎯', '🏆'];
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      if (!currentUser) return;
-      
-      const snapshot = await getDocs(collection(db, 'users'));
-      const usersList = snapshot.docs
-        .map(doc => ({ uid: doc.id, ...doc.data() }))
-        .filter(user => user.uid !== currentUser.uid); // exclude self
-      setAllUsers(usersList);
-    };
-    if (isOpen && currentUser) fetchUsers();
-  }, [isOpen, currentUser]);
 
   const handleAddMember = (e) => {
     const uid = e.target.value;
@@ -102,43 +86,51 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
         </div>
 
         <div className="mb-4">
-          <h3 className="text-sm font-medium text-[#5E000C] mb-2">Add Members</h3>
-          <select
-            onChange={handleAddMember}
-            className="w-full p-2 mb-2 border border-[#FD8839] rounded-lg focus:ring-2 focus:ring-[#F32D17] focus:border-transparent"
-            defaultValue=""
-          >
-            <option value="" disabled>Select a user to add</option>
-            {allUsers
-              .filter(user => !selectedUserIds.includes(user.uid))
-              .map(user => (
-                <option key={user.uid} value={user.uid}>
-                  {user.displayName || user.email}
-                </option>
-              ))}
-          </select>
+          <h3 className="text-sm font-medium text-[#5E000C] mb-2">Add Friends</h3>
+          {friends.length === 0 ? (
+            <p className="text-sm text-gray-500 p-3 bg-gray-50 rounded-lg">
+              You need to add friends first to create a group. Use the search bar to find and add friends!
+            </p>
+          ) : (
+            <>
+              <select
+                onChange={handleAddMember}
+                className="w-full p-2 mb-2 border border-[#FD8839] rounded-lg focus:ring-2 focus:ring-[#F32D17] focus:border-transparent"
+                defaultValue=""
+              >
+                <option value="" disabled>Select a friend to add</option>
+                {friends
+                  .filter(friend => !selectedUserIds.includes(friend.uid))
+                  .map(friend => (
+                    <option key={friend.uid} value={friend.uid}>
+                      {friend.name}
+                    </option>
+                  ))}
+              </select>
 
-          {selectedUserIds.length > 0 && (
-            <div className="mt-2 space-y-1">
-              <p className="text-sm text-gray-600">Selected members:</p>
-              <ul className="overflow-y-auto max-h-32">
-                {selectedUserIds.map(uid => {
-                  const user = allUsers.find(u => u.uid === uid);
-                  return (
-                    <li key={uid} className="flex items-center justify-between p-1 pl-2 rounded bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10">
-                      <span>{user?.displayName || user?.email}</span>
-                      <button
-                        type="button"
-                        onClick={() => handleRemoveMember(uid)}
-                        className="text-[#F32D17] hover:text-[#C1000F]"
-                      >
-                        ×
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
+              {selectedUserIds.length > 0 && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-sm text-gray-600">Selected friends:</p>
+                  <ul className="overflow-y-auto max-h-32">
+                    {selectedUserIds.map(uid => {
+                      const friend = friends.find(f => f.uid === uid);
+                      return (
+                        <li key={uid} className="flex items-center justify-between p-1 pl-2 rounded bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10">
+                          <span>{friend?.name}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(uid)}
+                            className="text-[#F32D17] hover:text-[#C1000F]"
+                          >
+                            ×
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -151,7 +143,8 @@ function NewGroupModal({ isOpen, onClose, onCreate }) {
           </button>
           <button
             onClick={handleCreateGroup}
-            className="px-4 py-2 bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white rounded-lg hover:from-[#F32D17] hover:to-[#C1000F]"
+            disabled={friends.length === 0}
+            className="px-4 py-2 bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white rounded-lg hover:from-[#F32D17] hover:to-[#C1000F] disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Create
           </button>

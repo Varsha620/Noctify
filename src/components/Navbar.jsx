@@ -1,14 +1,196 @@
+import { useState, useRef, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
+import { collection, query, where, getDocs, addDoc, serverTimestamp, onSnapshot, updateDoc, doc } from 'firebase/firestore';
+import { db } from '../firebase';
 import UserDropdown from './UserDropdown';
 
 function Navbar() {
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState([]);
+  const [showSearchResults, setShowSearchResults] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const searchRef = useRef(null);
+  const notificationRef = useRef(null);
+  const { currentUser } = useAuth();
+
+  // Close dropdowns when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (searchRef.current && !searchRef.current.contains(event.target)) {
+        setShowSearchResults(false);
+      }
+      if (notificationRef.current && !notificationRef.current.contains(event.target)) {
+        setShowNotifications(false);
+      }
+    }
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Listen for notifications
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const q = query(
+      collection(db, 'friendRequests'),
+      where('receiverId', '==', currentUser.uid)
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const friendRequests = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        type: 'friendRequest'
+      }));
+
+      // Also listen for accepted friend requests
+      const acceptedQuery = query(
+        collection(db, 'friendRequests'),
+        where('senderId', '==', currentUser.uid),
+        where('status', '==', 'accepted')
+      );
+
+      onSnapshot(acceptedQuery, (acceptedSnapshot) => {
+        const acceptedRequests = acceptedSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          type: 'friendAccepted'
+        }));
+
+        const allNotifications = [...friendRequests, ...acceptedRequests]
+          .sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds);
+
+        setNotifications(allNotifications);
+        setUnreadCount(allNotifications.filter(n => !n.read).length);
+      });
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
+  // Search users
+  const handleSearch = async (query) => {
+    setSearchQuery(query);
+    
+    if (query.trim().length < 2) {
+      setSearchResults([]);
+      setShowSearchResults(false);
+      return;
+    }
+
+    try {
+      const usersRef = collection(db, 'users');
+      const snapshot = await getDocs(usersRef);
+      
+      const results = snapshot.docs
+        .map(doc => ({ uid: doc.id, ...doc.data() }))
+        .filter(user => 
+          user.uid !== currentUser?.uid &&
+          (user.name?.toLowerCase().includes(query.toLowerCase()) ||
+           user.email?.toLowerCase().includes(query.toLowerCase()))
+        )
+        .slice(0, 5);
+
+      setSearchResults(results);
+      setShowSearchResults(true);
+    } catch (error) {
+      console.error('Error searching users:', error);
+    }
+  };
+
+  // Send friend request
+  const sendFriendRequest = async (receiverId, receiverName) => {
+    if (!currentUser) return;
+
+    try {
+      // Check if request already exists
+      const existingQuery = query(
+        collection(db, 'friendRequests'),
+        where('senderId', '==', currentUser.uid),
+        where('receiverId', '==', receiverId)
+      );
+      
+      const existingSnapshot = await getDocs(existingQuery);
+      
+      if (!existingSnapshot.empty) {
+        alert('Friend request already sent!');
+        return;
+      }
+
+      await addDoc(collection(db, 'friendRequests'), {
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.email.split('@')[0],
+        receiverId,
+        receiverName,
+        status: 'pending',
+        timestamp: serverTimestamp(),
+        read: false
+      });
+
+      alert('Friend request sent!');
+      setSearchQuery('');
+      setShowSearchResults(false);
+    } catch (error) {
+      console.error('Error sending friend request:', error);
+    }
+  };
+
+  // Handle friend request response
+  const handleFriendRequest = async (requestId, action) => {
+    try {
+      const requestRef = doc(db, 'friendRequests', requestId);
+      
+      if (action === 'accept') {
+        await updateDoc(requestRef, {
+          status: 'accepted',
+          read: true
+        });
+        
+        // Add to friends collection for both users
+        const request = notifications.find(n => n.id === requestId);
+        if (request) {
+          await addDoc(collection(db, 'friends'), {
+            user1: request.senderId,
+            user2: request.receiverId,
+            user1Name: request.senderName,
+            user2Name: request.receiverName,
+            timestamp: serverTimestamp()
+          });
+        }
+      } else {
+        await updateDoc(requestRef, {
+          status: 'rejected',
+          read: true
+        });
+      }
+    } catch (error) {
+      console.error('Error handling friend request:', error);
+    }
+  };
+
+  // Mark notification as read
+  const markAsRead = async (notificationId) => {
+    try {
+      const notificationRef = doc(db, 'friendRequests', notificationId);
+      await updateDoc(notificationRef, { read: true });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
   return (
     <div className="flex justify-between items-center p-4 mt-[-20px]">
       {/* Search */}
-      <div className="relative w-full max-w-md md:w-1/3">
+      <div className="relative w-full max-w-md md:w-1/3" ref={searchRef}>
         <input
           className="w-full p-2 pl-8 rounded-md border border-[#FD8839] focus:outline-none focus:ring-2 focus:ring-[#F32D17] bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 transition-all duration-200 focus:shadow-lg"
-          placeholder="Search"
+          placeholder="Search users..."
           type="text"
+          value={searchQuery}
+          onChange={(e) => handleSearch(e.target.value)}
         />
         <span className="absolute transition-colors duration-200 left-2 top-3">
           <svg width="18" height="18" fill="none" viewBox="0 0 24 24">
@@ -16,18 +198,115 @@ function Navbar() {
             <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#FD8839" strokeWidth="2" strokeLinecap="round"/>
           </svg>
         </span>
+
+        {/* Search Results Dropdown */}
+        {showSearchResults && searchResults.length > 0 && (
+          <div className="absolute top-full left-0 right-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-60 overflow-y-auto">
+            {searchResults.map((user) => (
+              <div key={user.uid} className="flex items-center justify-between p-3 hover:bg-gray-50 border-b last:border-b-0">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 bg-gradient-to-r from-[#FD8839] to-[#F32D17] rounded-full flex items-center justify-center text-white font-bold text-sm">
+                    {(user.name || user.email).charAt(0).toUpperCase()}
+                  </div>
+                  <div>
+                    <p className="font-medium text-gray-900">{user.name || user.email.split('@')[0]}</p>
+                    <p className="text-sm text-gray-500">{user.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => sendFriendRequest(user.uid, user.name || user.email.split('@')[0])}
+                  className="px-3 py-1 bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white text-sm rounded-lg hover:from-[#F32D17] hover:to-[#C1000F] transition-all"
+                >
+                  Add Friend
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Right side icons */}
       <div className="flex items-center space-x-2 md:space-x-4">
         {/* Notification */}
-        <div className="relative p-2 transition-all duration-200 transform cursor-pointer hover:scale-110">
-          <span className="flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-lg hover:from-[#F32D17] hover:to-[#C1000F] transition-all duration-200 hover:shadow-lg">
-            <svg width="25" height="25" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg">
-              <path d="M18.75 39.375H26.25C26.25 41.4375 24.5625 43.125 22.5 43.125C20.4375 43.125 18.75 41.4375 18.75 39.375ZM39.375 35.625V37.5H5.625V35.625L9.375 31.875V20.625C9.375 14.8125 13.125 9.75 18.75 8.0625V7.5C18.75 5.4375 20.4375 3.75 22.5 3.75C24.5625 3.75 26.25 5.4375 26.25 7.5V8.0625C31.875 9.75 35.625 14.8125 35.625 20.625V31.875L39.375 35.625ZM31.875 20.625C31.875 15.375 27.75 11.25 22.5 11.25C17.25 11.25 13.125 15.375 13.125 20.625V33.75H31.875V20.625Z" fill="white"/>
-            </svg>
-          </span>
-          <span className="absolute w-2 h-2 bg-[#C1000F] rounded-full top-1 right-1 animate-pulse"></span>
+        <div className="relative" ref={notificationRef}>
+          <div 
+            className="relative p-2 transition-all duration-200 transform cursor-pointer hover:scale-110"
+            onClick={() => setShowNotifications(!showNotifications)}
+          >
+            <span className="flex items-center justify-center w-11 h-11 rounded-full bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-lg hover:from-[#F32D17] hover:to-[#C1000F] transition-all duration-200 hover:shadow-lg">
+              <svg width="25" height="25" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18.75 39.375H26.25C26.25 41.4375 24.5625 43.125 22.5 43.125C20.4375 43.125 18.75 41.4375 18.75 39.375ZM39.375 35.625V37.5H5.625V35.625L9.375 31.875V20.625C9.375 14.8125 13.125 9.75 18.75 8.0625V7.5C18.75 5.4375 20.4375 3.75 22.5 3.75C24.5625 3.75 26.25 5.4375 26.25 7.5V8.0625C31.875 9.75 35.625 14.8125 35.625 20.625V31.875L39.375 35.625ZM31.875 20.625C31.875 15.375 27.75 11.25 22.5 11.25C17.25 11.25 13.125 15.375 13.125 20.625V33.75H31.875V20.625Z" fill="white"/>
+              </svg>
+            </span>
+            {unreadCount > 0 && (
+              <span className="absolute w-5 h-5 bg-[#C1000F] rounded-full top-0 right-0 flex items-center justify-center text-white text-xs font-bold animate-pulse">
+                {unreadCount}
+              </span>
+            )}
+          </div>
+
+          {/* Notifications Dropdown */}
+          {showNotifications && (
+            <div className="absolute right-0 mt-2 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 max-h-96 overflow-y-auto">
+              <div className="p-3 border-b border-gray-200">
+                <h3 className="font-semibold text-gray-900">Notifications</h3>
+              </div>
+              
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-gray-500">
+                  No notifications
+                </div>
+              ) : (
+                notifications.map((notification) => (
+                  <div 
+                    key={notification.id} 
+                    className={`p-3 border-b border-gray-100 hover:bg-gray-50 ${!notification.read ? 'bg-blue-50' : ''}`}
+                    onClick={() => markAsRead(notification.id)}
+                  >
+                    {notification.type === 'friendRequest' && notification.status === 'pending' && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {notification.senderName} sent you a friend request
+                        </p>
+                        <div className="flex gap-2 mt-2">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFriendRequest(notification.id, 'accept');
+                            }}
+                            className="px-3 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600"
+                          >
+                            Accept
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleFriendRequest(notification.id, 'reject');
+                            }}
+                            className="px-3 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600"
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                    
+                    {notification.type === 'friendAccepted' && (
+                      <div>
+                        <p className="text-sm font-medium text-gray-900">
+                          {notification.receiverName} accepted your friend request
+                        </p>
+                      </div>
+                    )}
+                    
+                    <p className="text-xs text-gray-500 mt-1">
+                      {notification.timestamp?.toDate?.()?.toLocaleDateString() || 'Just now'}
+                    </p>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Message */}

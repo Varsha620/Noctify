@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { db } from '../firebase';
-import { collection, collectionGroup, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, collectionGroup, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
 function NotificationsPanel({ onCreateGroup }) {
@@ -8,18 +8,82 @@ function NotificationsPanel({ onCreateGroup }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updateMessage, setUpdateMessage] = useState('');
+  const [friends, setFriends] = useState([]);
+
+  // Fetch user's friends
+  useEffect(() => {
+    const fetchFriends = async () => {
+      if (!currentUser) return;
+
+      try {
+        const friendsQuery1 = query(
+          collection(db, 'friends'),
+          where('user1', '==', currentUser.uid)
+        );
+        
+        const friendsQuery2 = query(
+          collection(db, 'friends'),
+          where('user2', '==', currentUser.uid)
+        );
+
+        const [snapshot1, snapshot2] = await Promise.all([
+          getDocs(friendsQuery1),
+          getDocs(friendsQuery2)
+        ]);
+
+        const friendsList = [];
+        
+        snapshot1.docs.forEach(doc => {
+          const data = doc.data();
+          friendsList.push({
+            uid: data.user2,
+            name: data.user2Name
+          });
+        });
+
+        snapshot2.docs.forEach(doc => {
+          const data = doc.data();
+          friendsList.push({
+            uid: data.user1,
+            name: data.user1Name
+          });
+        });
+
+        setFriends(friendsList);
+      } catch (error) {
+        console.error('Error fetching friends:', error);
+      }
+    };
+
+    fetchFriends();
+  }, [currentUser]);
 
   const handlePostUpdate = async (e) => {
     e.preventDefault();
     if (!updateMessage.trim() || !currentUser) return;
 
     try {
-      await addDoc(collection(db, 'users', currentUser.uid, 'updates'), {
-        message: updateMessage,
-        senderId: currentUser.uid,
-        senderName: currentUser.displayName || currentUser.email.split('@')[0],
-        timestamp: serverTimestamp(),
-      });
+      // Post to all friends' updates collections
+      const promises = friends.map(friend => 
+        addDoc(collection(db, 'users', friend.uid, 'updates'), {
+          message: updateMessage,
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || currentUser.email.split('@')[0],
+          timestamp: serverTimestamp(),
+        })
+      );
+
+      // Also post to current user's updates
+      promises.push(
+        addDoc(collection(db, 'users', currentUser.uid, 'updates'), {
+          message: updateMessage,
+          senderId: currentUser.uid,
+          senderName: currentUser.displayName || currentUser.email.split('@')[0],
+          timestamp: serverTimestamp(),
+        })
+      );
+
+      await Promise.all(promises);
       setUpdateMessage('');
     } catch (error) {
       console.error("Error posting update:", error);
@@ -30,7 +94,7 @@ function NotificationsPanel({ onCreateGroup }) {
     if (!currentUser) return;
 
     const q = query(
-      collectionGroup(db, 'updates'),
+      collection(db, 'users', currentUser.uid, 'updates'),
       orderBy('timestamp', 'desc'),
       limit(10)
     );
@@ -102,7 +166,7 @@ function NotificationsPanel({ onCreateGroup }) {
         <form onSubmit={handlePostUpdate} className="flex gap-2 mt-4">
           <input
             type="text"
-            placeholder="Notify something emergency..."
+            placeholder="Notify all friends..."
             value={updateMessage}
             onChange={(e) => setUpdateMessage(e.target.value)}
             className="flex-1 p-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/70"
