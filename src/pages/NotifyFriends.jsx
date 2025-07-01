@@ -4,7 +4,10 @@ import Sidebar from '../components/Sidebar';
 import ChatCard from '../components/ChatCard';
 import NotificationsPanel from '../components/NotificationPanel';
 import NewGroupModal from '../components/NewGroupModal';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp, where, getDocs } from "firebase/firestore";
+import { 
+  collection, query, orderBy, onSnapshot, addDoc, 
+  serverTimestamp, where, getDocs, doc, updateDoc 
+} from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from '../context/AuthContext';
 
@@ -17,6 +20,7 @@ function NotifyFriends() {
   const [isGroupModalOpen, setGroupModalOpen] = useState(false);
   const [showChatView, setShowChatView] = useState(false);
   const [friends, setFriends] = useState([]);
+  const [notifications, setNotifications] = useState([]);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when messages update
@@ -72,6 +76,28 @@ function NotifyFriends() {
     fetchFriends();
   }, [currentUser]);
 
+  // Fetch notifications
+  useEffect(() => {
+    if (!currentUser) return;
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
+    );
+
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const notifs = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
+      setNotifications(notifs);
+    });
+
+    return () => unsubscribe();
+  }, [currentUser]);
+
   // Fetch messages for active group
   useEffect(() => {
     if (!activeGroupId) return;
@@ -85,28 +111,29 @@ function NotifyFriends() {
       const msgs = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate()
       }));
       setMessages(msgs);
-    }, (error) => {
-      console.error("Error fetching messages:", error);
     });
 
     return () => unsubscribe();
   }, [activeGroupId]);
 
-  // Fetch user's groups (only groups where user is a member)
+  // Fetch user's groups
   useEffect(() => {
     if (!currentUser) return;
 
     const q = query(
       collection(db, 'groups'),
-      where('members', 'array-contains', currentUser.uid)
+      where('members', 'array-contains', currentUser.uid),
+      orderBy('createdAt', 'desc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const groupsData = snapshot.docs.map((doc) => ({
         id: doc.id,
         ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
       }));
       setGroups(groupsData);
     });
@@ -137,14 +164,30 @@ function NotifyFriends() {
     setShowChatView(true);
   };
 
-  const activeGroup = groups.find(group => group.id === activeGroupId) || { name: 'Select a chat', members: [], avatar: '👥' };
+  const markNotificationAsRead = async (notificationId) => {
+    try {
+      await updateDoc(doc(db, 'notifications', notificationId), {
+        read: true
+      });
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const activeGroup = groups.find(group => group.id === activeGroupId) || { 
+    name: 'Select a chat', 
+    members: [], 
+    avatar: '👥' 
+  };
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-white md:flex-row">
+      {/* Sidebar */}
       <div className="hidden md:flex">
         <Sidebar />
       </div>
 
+      {/* Main Content */}
       <div className="flex flex-col w-full p-4 pb-20 md:pb-4">
         <Navbar />
         <h2 className="text-2xl md:text-3xl font-light text-[#5E000C] mt-6 mb-4 ml-2">
@@ -154,11 +197,9 @@ function NotifyFriends() {
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Chat Section */}
           <div className="flex flex-1 rounded-2xl bg-gradient-to-br from-[#FD8839] to-[#F32D17] shadow-lg overflow-hidden min-h-[500px] border-[#C1000F] border-[1px]">
-            
-            {/* Mobile: Show either groups list or chat */}
+            {/* Mobile View */}
             <div className="flex w-full md:hidden">
               {!showChatView ? (
-                // Groups List (Mobile)
                 <div className="w-full bg-gradient-to-b from-[#F32D17] to-[#C1000F] text-white flex flex-col py-4">
                   <div className="flex items-center justify-between px-4 mb-4">
                     <h3 className="text-sm font-medium text-white">Recent Chats</h3>
@@ -184,19 +225,11 @@ function NotifyFriends() {
                         />
                       </div>
                     ))}
-                    {groups.length === 0 && (
-                      <div className="flex flex-col items-center justify-center py-8 text-white/70">
-                        <svg width="80" height="80" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.5"/>
-                        </svg>
-                        <p className="mt-4 text-center">No groups yet. Create your first group!</p>
-                      </div>
-                    )}
                   </div>
                 </div>
               ) : (
-                // Chat View (Mobile)
                 <div className="relative flex flex-col flex-1 bg-white/10">
+                  {/* Chat header with back button */}
                   <div className="flex items-center justify-between w-full px-4 py-3 bg-gradient-to-r from-[#C1000F] to-[#5E000C] text-white">
                     <button 
                       onClick={() => setShowChatView(false)}
@@ -211,37 +244,29 @@ function NotifyFriends() {
                         <p className="text-xs opacity-80">{activeGroup.members?.length || 0} members</p>
                       </div>
                     </div>
-                    <div></div>
                   </div>
                   
+                  {/* Messages area */}
                   <div className="flex flex-col justify-end flex-1 p-4 space-y-2 overflow-y-auto">
-                    {messages.length === 0 ? (
-                      <div className="flex flex-col items-center justify-center h-full text-white/70">
-                        <svg width="80" height="80" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.5"/>
-                        </svg>
-                        <p className="mt-4 text-center">No messages yet. Start the conversation!</p>
+                    {messages.map((msg) => (
+                      <div
+                        key={msg.id}
+                        className={`self-start px-3 py-2 rounded-xl max-w-[70%] text-sm ${
+                          msg.senderId === currentUser?.uid
+                            ? 'bg-white/30 self-end text-right'
+                            : 'bg-white/20 text-left'
+                        }`}
+                      >
+                        <p className="mb-1 text-xs font-bold text-white/80">
+                          {msg.senderId === currentUser?.uid ? 'You' : msg.senderName}
+                        </p>
+                        <p className='text-white'>{msg.text}</p>
                       </div>
-                    ) : (
-                      messages.map((msg) => (
-                        <div
-                          key={msg.id}
-                          className={`self-start px-3 py-2 rounded-xl max-w-[70%] text-sm ${
-                            msg.senderId === currentUser?.uid
-                              ? 'bg-white/30 self-end text-right'
-                              : 'bg-white/20 text-left'
-                          }`}
-                        >
-                          <p className="mb-1 text-xs font-bold text-white/80">
-                            {msg.senderId === currentUser?.uid ? 'You' : msg.senderName}
-                          </p>
-                          <p className='text-white'>{msg.text}</p>
-                        </div>
-                      ))
-                    )}
+                    ))}
                     <div ref={messagesEndRef} />
                   </div>
 
+                  {/* Message input */}
                   <form onSubmit={handleSendMessage} className="flex items-center w-full px-3 py-2 mx-4 mt-4 mb-4 bg-white border rounded-full shadow-inner border-white/30">
                     <input
                       type="text"
@@ -258,9 +283,9 @@ function NotifyFriends() {
               )}
             </div>
 
-            {/* Desktop: Show both groups list and chat */}
+            {/* Desktop View */}
             <div className="hidden w-full md:flex">
-              {/* Left - Recent Chats */}
+              {/* Groups list */}
               <div className="w-1/3 bg-gradient-to-b from-[#F32D17] to-[#C1000F] text-white flex flex-col py-4 rounded-l-lg">
                 <div className="flex items-center justify-between px-4 mb-4">
                   <h3 className="text-sm font-medium text-white">Recent Chats</h3>
@@ -271,7 +296,7 @@ function NotifyFriends() {
                     New Group
                   </button>
                 </div>
-                <div className="flex flex-col gap-2 px-2 overflow-y-auto max-h-96">
+                <div className="flex flex-col gap-2 px-2 overflow-y-auto">
                   {groups.map((group) => (
                     <div
                       key={group.id}
@@ -288,18 +313,10 @@ function NotifyFriends() {
                       />
                     </div>
                   ))}
-                  {groups.length === 0 && (
-                    <div className="flex flex-col items-center justify-center py-8 text-white/70">
-                      <svg width="60" height="60" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
-                        <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.5"/>
-                      </svg>
-                      <p className="mt-4 text-sm text-center">No groups yet</p>
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Right - Main Chat Area */}
+              {/* Chat area */}
               <div className="relative flex flex-col flex-1 p-4 bg-white/10">
                 {activeGroupId ? (
                   <>
@@ -314,30 +331,21 @@ function NotifyFriends() {
                     </div>
                     
                     <div className="flex flex-col justify-end flex-1 w-full p-4 space-y-2 overflow-y-auto">
-                      {messages.length === 0 ? (
-                        <div className="flex flex-col items-center justify-center h-full text-white/70">
-                          <svg width="100" height="100" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
-                            <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.3"/>
-                          </svg>
-                          <p className="mt-4 text-center">No messages yet. Start the conversation!</p>
+                      {messages.map((msg) => (
+                        <div
+                          key={msg.id}
+                          className={`self-start px-3 py-2 rounded-xl max-w-[70%] text-sm ${
+                            msg.senderId === currentUser?.uid
+                              ? 'bg-white/30 self-end text-right'
+                              : 'bg-white/20 text-left'
+                          }`}
+                        >
+                          <p className="mb-1 text-xs font-bold text-white/80">
+                            {msg.senderId === currentUser?.uid ? 'You' : msg.senderName}
+                          </p>
+                          <p className='text-white'>{msg.text}</p>
                         </div>
-                      ) : (
-                        messages.map((msg) => (
-                          <div
-                            key={msg.id}
-                            className={`self-start px-3 py-2 rounded-xl max-w-[70%] text-sm ${
-                              msg.senderId === currentUser?.uid
-                                ? 'bg-white/30 self-end text-right'
-                                : 'bg-white/20 text-left'
-                            }`}
-                          >
-                            <p className="mb-1 text-xs font-bold text-white/80">
-                              {msg.senderId === currentUser?.uid ? 'You' : msg.senderName}
-                            </p>
-                            <p className='text-white'>{msg.text}</p>
-                          </div>
-                        ))
-                      )}
+                      ))}
                       <div ref={messagesEndRef} />
                     </div>
 
@@ -356,23 +364,25 @@ function NotifyFriends() {
                   </>
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-white/70">
-                    <svg width="120" height="120" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
-                      <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="white" opacity="0.3"/>
-                    </svg>
-                    <p className="mt-4 text-center">Select a group to start chatting</p>
+                    <p className="text-center">Select a group to start chatting</p>
                   </div>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Right Column */}
+          {/* Notifications Panel */}
           <div className="w-full lg:w-[28%]">
-            <NotificationsPanel onCreateGroup={() => setGroupModalOpen(true)} />
+            <NotificationsPanel 
+              notifications={notifications}
+              onCreateGroup={() => setGroupModalOpen(true)}
+              onMarkAsRead={markNotificationAsRead}
+            />
           </div>
         </div>
       </div>
 
+      {/* New Group Modal */}
       <NewGroupModal
         isOpen={isGroupModalOpen}
         onClose={() => setGroupModalOpen(false)}
@@ -386,6 +396,23 @@ function NotifyFriends() {
               createdAt: serverTimestamp(),
               createdBy: currentUser.uid
             });
+            
+            // Add notification to all group members
+            members.forEach(async (memberId) => {
+              if (memberId !== currentUser.uid) {
+                await addDoc(collection(db, 'notifications'), {
+                  type: 'group_invite',
+                  groupId: docRef.id,
+                  groupName,
+                  userId: memberId,
+                  senderId: currentUser.uid,
+                  senderName: currentUser.displayName || currentUser.email,
+                  read: false,
+                  createdAt: serverTimestamp()
+                });
+              }
+            });
+
             setActiveGroupId(docRef.id);
             setGroupModalOpen(false);
             if (window.innerWidth < 768) {

@@ -1,199 +1,264 @@
-import { useEffect, useState } from 'react';
+// NotificationPanel.jsx
+import { useState, useEffect } from 'react';
+import { 
+  collection, 
+  query, 
+  where, 
+  orderBy, 
+  onSnapshot, 
+  addDoc, 
+  serverTimestamp, 
+  updateDoc, 
+  doc, 
+  arrayUnion,
+  getDocs,
+  limit
+} from 'firebase/firestore';
 import { db } from '../firebase';
-import { collection, collectionGroup, query, orderBy, limit, onSnapshot, addDoc, serverTimestamp, where, getDocs } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 
-function NotificationsPanel({ onCreateGroup }) {
+function NotificationPanel() {
   const { currentUser } = useAuth();
-  const [notifications, setNotifications] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [updateMessage, setUpdateMessage] = useState('');
+  const [statusUpdates, setStatusUpdates] = useState([]);
   const [friends, setFriends] = useState([]);
+  const [newStatus, setNewStatus] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
+  const [isPosting, setIsPosting] = useState(false);
 
-  // Fetch user's friends
+  // Fetch friends list
   useEffect(() => {
+    if (!currentUser) return;
+
     const fetchFriends = async () => {
-      if (!currentUser) return;
-
       try {
-        const friendsQuery1 = query(
+        // Query both directions of friendships
+        const q1 = query(
           collection(db, 'friends'),
-          where('user1', '==', currentUser.uid)
+          where('user1', '==', currentUser.uid),
+          limit(100)
+        );
+        const q2 = query(
+          collection(db, 'friends'),
+          where('user2', '==', currentUser.uid),
+          limit(100)
         );
         
-        const friendsQuery2 = query(
-          collection(db, 'friends'),
-          where('user2', '==', currentUser.uid)
-        );
-
-        const [snapshot1, snapshot2] = await Promise.all([
-          getDocs(friendsQuery1),
-          getDocs(friendsQuery2)
-        ]);
-
-        const friendsList = [];
+        const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
         
-        snapshot1.docs.forEach(doc => {
-          const data = doc.data();
-          friendsList.push({
-            uid: data.user2,
-            name: data.user2Name
-          });
-        });
-
-        snapshot2.docs.forEach(doc => {
-          const data = doc.data();
-          friendsList.push({
-            uid: data.user1,
-            name: data.user1Name
-          });
-        });
-
+        const friendsList = [
+          ...snapshot1.docs.map(doc => doc.data().user2),
+          ...snapshot2.docs.map(doc => doc.data().user1)
+        ];
+        
         setFriends(friendsList);
       } catch (error) {
-        console.error('Error fetching friends:', error);
+        console.error("Error fetching friends:", error);
       }
     };
 
     fetchFriends();
   }, [currentUser]);
 
-  const handlePostUpdate = async (e) => {
-    e.preventDefault();
-    if (!updateMessage.trim() || !currentUser) return;
-
-    try {
-      // Post to all friends' updates collections
-      const promises = friends.map(friend => 
-        addDoc(collection(db, 'users', friend.uid, 'updates'), {
-          message: updateMessage,
-          senderId: currentUser.uid,
-          senderName: currentUser.displayName || currentUser.email.split('@')[0],
-          timestamp: serverTimestamp(),
-        })
-      );
-
-      // Also post to current user's updates
-      promises.push(
-        addDoc(collection(db, 'users', currentUser.uid, 'updates'), {
-          message: updateMessage,
-          senderId: currentUser.uid,
-          senderName: currentUser.displayName || currentUser.email.split('@')[0],
-          timestamp: serverTimestamp(),
-        })
-      );
-
-      await Promise.all(promises);
-      setUpdateMessage('');
-    } catch (error) {
-      console.error("Error posting update:", error);
-    }
-  };
-  
+  // Fetch status updates
   useEffect(() => {
     if (!currentUser) return;
 
-    const q = query(
-      collection(db, 'users', currentUser.uid, 'updates'),
-      orderBy('timestamp', 'desc'),
-      limit(10)
-    );
+    let unsubscribeCallbacks = [];
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const recentUpdates = snapshot.docs.map(doc => {
-        const data = doc.data();
-        return {
-          id: doc.id,
-          message: data.message,
-          senderId: data.senderId,
-          senderName: data.senderName || 'Anonymous',
-          timestamp: data.timestamp?.toDate() || new Date(),
-        };
+    const fetchStatusUpdates = async () => {
+      try {
+        // Get all friend IDs including current user
+        const friendIds = [...friends, currentUser.uid];
+        
+        // Split into chunks of 10 (Firestore 'in' query limit)
+        const chunks = [];
+        for (let i = 0; i < friendIds.length; i += 10) {
+          chunks.push(friendIds.slice(i, i + 10));
+        }
+
+        // Set up listeners for each chunk
+        unsubscribeCallbacks = chunks.map(chunk => {
+          const q = query(
+            collection(db, 'status_updates'),
+            where('userId', 'in', chunk),
+            where('expiresAt', '>', new Date()),
+            orderBy('expiresAt', 'asc'),
+            limit(50)
+          );
+
+          return onSnapshot(q, 
+            (snapshot) => {
+              const updates = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                createdAt: doc.data().createdAt?.toDate(),
+                expiresAt: doc.data().expiresAt?.toDate()
+              }));
+              
+              setStatusUpdates(prev => [
+                ...prev.filter(u => !chunk.includes(u.userId)),
+                ...updates
+              ]);
+            },
+            (error) => {
+              console.error("Status updates error:", error);
+            }
+          );
+        });
+      } catch (error) {
+        console.error("Error setting up status updates listener:", error);
+      }
+    };
+
+    fetchStatusUpdates();
+
+    return () => {
+      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe());
+    };
+  }, [currentUser, friends]);
+
+  const postStatus = async () => {
+    if (!newStatus.trim() || !currentUser) return;
+    setIsPosting(true);
+
+    try {
+      await addDoc(collection(db, 'status_updates'), {
+        userId: currentUser.uid,
+        content: newStatus,
+        createdAt: serverTimestamp(),
+        expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours from now
+        viewers: []
       });
-
-      setNotifications(recentUpdates);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error fetching notifications:", error);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [currentUser]);
-
-  const formatTime = (date) => {
-    return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      setNewStatus('');
+    } catch (error) {
+      console.error('Error posting status:', error);
+    } finally {
+      setIsPosting(false);
+    }
   };
 
-  return (
-    <div className="space-y-4">
-      {/* Notifications Panel */}
-      <div className="bg-gradient-to-br from-[#FD8839] to-[#F32D17] p-4 rounded-2xl shadow-lg min-h-[350px] relative text-white"
-           style={{ boxShadow: '0px 4px 15px 5px rgba(193, 0, 15, 0.3)' }}>
-        <h4 className="text-white font-medium mb-3 text-lg">Recent Activity</h4>
-        
-        {loading ? (
-          <div className="flex items-center justify-center h-40">
-            <p className="text-white/80">Loading notifications...</p>
-          </div>
-        ) : notifications.length === 0 ? (
-          <p className="py-8 text-center text-white/70">No recent activity</p>
-        ) : (
-          <ul className="space-y-3 max-h-[250px] overflow-y-auto">
-            {notifications.map((notification) => (
-              <li 
-                key={notification.id} 
-                className="flex items-start gap-3 px-3 py-2 text-sm transition-colors bg-white/20 rounded-lg shadow-sm hover:bg-white/30"
-              >
-                <div className="flex-shrink-0 w-8 h-8 rounded-full bg-white/30 flex items-center justify-center text-white font-bold text-xs">
-                  {notification.senderName.substring(0, 2).toUpperCase()}
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium text-white truncate">
-                    {notification.senderId === currentUser?.uid ? 'You' : notification.senderName}
-                  </p>
-                  <p className="text-white/80 truncate">{notification.message}</p>
-                </div>
-                <div className="self-center text-xs text-white/60">
-                  {formatTime(notification.timestamp)}
-                </div>
-              </li>
-            ))}
-          </ul>
-        )}
+  const markAsViewed = async (statusId) => {
+    if (!currentUser) return;
+    
+    try {
+      await updateDoc(doc(db, 'status_updates', statusId), {
+        viewers: arrayUnion(currentUser.uid)
+      });
+    } catch (error) {
+      console.error('Error marking as viewed:', error);
+    }
+  };
 
-        {/* Post Update Form */}
-        <form onSubmit={handlePostUpdate} className="flex gap-2 mt-4">
-          <input
-            type="text"
-            placeholder="Notify all friends..."
-            value={updateMessage}
-            onChange={(e) => setUpdateMessage(e.target.value)}
-            className="flex-1 p-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-white/50 bg-white/20 text-white placeholder-white/70"
-          />
+  const filteredUpdates = statusUpdates.filter(update => {
+    if (activeTab === 'all') return true;
+    if (activeTab === 'unseen') return !update.viewers?.includes(currentUser?.uid);
+    return update.userId === currentUser?.uid;
+  });
+
+  // Sort updates by creation time (newest first)
+  const sortedUpdates = [...filteredUpdates].sort((a, b) => 
+    (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+  );
+
+  return (
+    <div className="bg-gradient-to-br from-[#F32D17] to-[#C1000F] p-4 rounded-2xl shadow-lg h-full">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-lg font-semibold text-white">Status Updates</h3>
+        <div className="flex gap-2">
           <button 
-            type="submit"
-            className="px-4 py-2 text-sm text-white bg-white/20 rounded-lg hover:bg-white/30 transition-colors"
+            onClick={() => setActiveTab('all')}
+            className={`px-3 py-1 text-xs rounded-full ${
+              activeTab === 'all' ? 'bg-white text-[#F32D17]' : 'bg-white/20 text-white'
+            }`}
           >
-            POST
+            All
           </button>
-        </form>
+          <button 
+            onClick={() => setActiveTab('unseen')}
+            className={`px-3 py-1 text-xs rounded-full ${
+              activeTab === 'unseen' ? 'bg-white text-[#F32D17]' : 'bg-white/20 text-white'
+            }`}
+          >
+            Unseen
+          </button>
+          <button 
+            onClick={() => setActiveTab('mine')}
+            className={`px-3 py-1 text-xs rounded-full ${
+              activeTab === 'mine' ? 'bg-white text-[#F32D17]' : 'bg-white/20 text-white'
+            }`}
+          >
+            My Status
+          </button>
+        </div>
       </div>
 
-      {/* CTA Box */}
-      <div className="flex items-center justify-between p-4 bg-gradient-to-br from-[#F32D17] to-[#C1000F] rounded-2xl shadow-lg text-white">
-        <p className="text-sm">
-          Join your Roomies,<br />dare your friends!
-        </p>
-        <button 
-          onClick={onCreateGroup}
-          className="text-sm px-4 py-2 rounded-xl text-white bg-white/20 shadow-md hover:bg-white/30 transition-all"
+      {/* Status Creation */}
+      <div className="p-3 mb-4 rounded-lg bg-white/10">
+        <textarea
+          placeholder="What's on your mind?"
+          value={newStatus}
+          onChange={(e) => setNewStatus(e.target.value)}
+          className="w-full p-2 mb-2 text-white border rounded-lg bg-white/20 border-white/30 focus:outline-none focus:ring-1 focus:ring-white"
+          rows={3}
+        />
+        <button
+          onClick={postStatus}
+          disabled={isPosting || !newStatus.trim()}
+          className="w-full py-2 bg-white text-[#F32D17] rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          New Group
+          {isPosting ? 'Posting...' : 'Post Status'}
         </button>
+      </div>
+
+      {/* Status Updates List */}
+      <div className="space-y-3 max-h-[300px] overflow-y-auto">
+        {filteredUpdates.length > 0 ? (
+          filteredUpdates.map(update => (
+            <div 
+              key={update.id} 
+              className={`p-3 rounded-lg cursor-pointer transition-all ${
+                update.viewers?.includes(currentUser?.uid) 
+                  ? 'bg-white/10' 
+                  : 'bg-white/20 border border-white/30'
+              }`}
+              onClick={() => !update.viewers?.includes(currentUser?.uid) && markAsViewed(update.id)}
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex items-center justify-center w-10 h-10 text-white rounded-full bg-white/20">
+                  {update.userId === currentUser?.uid ? 'You' : update.userId.charAt(0).toUpperCase()}
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-medium text-white">
+                    {update.userId === currentUser?.uid ? 'Your status' : "Friend's status"}
+                  </p>
+                  <p className="mt-1 text-white">{update.content}</p>
+                  <div className="flex items-center justify-between mt-2">
+                    <p className="text-xs text-white/70">
+                      {update.createdAt?.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) || 'Just now'}
+                    </p>
+                    <p className="text-xs text-white/70">
+                      {update.viewers?.length || 0} views
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))
+        ) : (
+          <div className="flex flex-col items-center justify-center py-8 text-white/70">
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-12 h-12" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-5 5v-5z" />
+            </svg>
+            <p className="mt-2 text-center">
+              {activeTab === 'mine' 
+                ? "You haven't posted any status updates" 
+                : "No status updates to show"}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
 }
 
-export default NotificationsPanel;
+export default NotificationPanel;
