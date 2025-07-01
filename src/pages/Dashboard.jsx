@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { db } from '../firebase'
-import { collection, getDocs, query, orderBy, limit, collectionGroup, onSnapshot } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit, where, onSnapshot, or } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 
 function Dashboard() {
@@ -31,23 +31,46 @@ function Dashboard() {
       if (!currentUser) return;
 
       try {
-        // Fetch expense data
-        const billsSnapshot = await getDocs(collection(db, 'bills'));
-        const bills = billsSnapshot.docs.map(doc => doc.data());
+        // Fetch expense data - bills created by user or split with user
+        const billsQuery = query(
+          collection(db, 'bills'),
+          or(
+            where('createdBy', '==', currentUser.uid),
+            where('splitTo', 'array-contains', currentUser.uid)
+          )
+        );
+        const billsSnapshot = await getDocs(billsQuery);
+        const bills = billsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()
+        }));
+
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
         
-        const monthlyTotal = bills
-          .filter(bill => {
-            const billDate = bill.createdAt?.toDate?.();
-            return billDate && billDate.getMonth() === currentMonth && billDate.getFullYear() === currentYear;
-          })
-          .reduce((sum, bill) => sum + Number(bill.amount || 0), 0);
+        let monthlyTotal = 0;
+        bills.forEach(bill => {
+          const billDate = bill.createdAt;
+          if (billDate && billDate.getMonth() === currentMonth && billDate.getFullYear() === currentYear) {
+            if (bill.createdBy === currentUser.uid) {
+              // Full amount for bills you created
+              monthlyTotal += Number(bill.amount || 0);
+            } else if (bill.splitTo?.includes(currentUser.uid)) {
+              // Your share for bills split with you
+              const share = Number(bill.amount || 0) / (bill.splitTo.length || 1);
+              monthlyTotal += share;
+            }
+          }
+        });
 
         // Fetch exam data
         const examsRef = collection(db, 'users', currentUser.uid, 'exams');
         const examsSnapshot = await getDocs(query(examsRef, orderBy('examDate', 'asc')));
-        const exams = examsSnapshot.docs.map(doc => doc.data());
+        const exams = examsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
         
         const today = new Date();
         const upcomingExams = exams.filter(exam => {
@@ -58,7 +81,7 @@ function Dashboard() {
         const nearestExam = upcomingExams.length > 0 ? upcomingExams[0].subject : 'No exams';
 
         setDashboardData({
-          monthlyExpense: monthlyTotal,
+          monthlyExpense: Math.round(monthlyTotal),
           upcomingExams: upcomingExams.length,
           nearestExam,
           recentNotifications: []
@@ -71,13 +94,14 @@ function Dashboard() {
     fetchDashboardData();
   }, [currentUser]);
 
-  // Listen for real-time notifications from NotifyFriends
+  // Listen for real-time notifications
   useEffect(() => {
     if (!currentUser) return;
 
     const q = query(
-      collectionGroup(db, 'updates'),
-      orderBy('timestamp', 'desc'),
+      collection(db, 'notifications'),
+      where('userId', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
       limit(5)
     );
 
@@ -86,10 +110,11 @@ function Dashboard() {
         const data = doc.data();
         return {
           id: doc.id,
-          message: data.message,
-          senderId: data.senderId,
-          senderName: data.senderName || 'Anonymous',
-          timestamp: data.timestamp?.toDate() || new Date(),
+          message: data.message || data.type || 'New notification',
+          senderId: data.senderId || 'system',
+          senderName: data.senderName || 'System',
+          timestamp: data.createdAt?.toDate() || new Date(),
+          type: data.type || 'general'
         };
       });
 
@@ -107,6 +132,21 @@ function Dashboard() {
   const formatTime = (date) => {
     if (!date) return '';
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  };
+
+  const getNotificationMessage = (notification) => {
+    switch (notification.type) {
+      case 'friend_request':
+        return `${notification.senderName} sent you a friend request`;
+      case 'friend_accepted':
+        return `${notification.senderName} accepted your friend request`;
+      case 'group_invite':
+        return `${notification.senderName} added you to ${notification.groupName}`;
+      case 'expense_split':
+        return `${notification.senderName} split a bill with you`;
+      default:
+        return notification.message || 'New notification';
+    }
   };
 
   return (
@@ -140,9 +180,9 @@ function Dashboard() {
                   </div>
                 </div>
               </div>
-              {/* Right side - Mascot image or emoji */}
+              {/* Right side - User Avatar */}
               <div className="flex items-center justify-center p-4 mr-10 border-4 border-white/30 rounded-2xl bg-white/20">
-                <h1 className="text-[9rem]">🐳</h1>
+                <h1 className="text-[9rem]">{userAvatar}</h1>
               </div>
             </div>
           </div>
@@ -175,7 +215,7 @@ function Dashboard() {
                           <p className="text-sm font-medium text-[#5E000C]">
                             {notification.senderId === currentUser?.uid ? 'You' : notification.senderName}
                           </p>
-                          <p className="text-xs text-gray-600">{notification.message}</p>
+                          <p className="text-xs text-gray-600">{getNotificationMessage(notification)}</p>
                           <p className="text-xs text-gray-500">{formatTime(notification.timestamp)}</p>
                         </div>
                       </div>

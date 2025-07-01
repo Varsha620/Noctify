@@ -120,6 +120,29 @@ function Navbar() {
         return;
       }
 
+      // Check if they're already friends
+      const friendsQuery1 = query(
+        collection(db, 'friends'),
+        where('user1', '==', currentUser.uid),
+        where('user2', '==', receiverId)
+      );
+      
+      const friendsQuery2 = query(
+        collection(db, 'friends'),
+        where('user1', '==', receiverId),
+        where('user2', '==', currentUser.uid)
+      );
+
+      const [friendsSnapshot1, friendsSnapshot2] = await Promise.all([
+        getDocs(friendsQuery1),
+        getDocs(friendsQuery2)
+      ]);
+
+      if (!friendsSnapshot1.empty || !friendsSnapshot2.empty) {
+        alert('You are already friends!');
+        return;
+      }
+
       await addDoc(collection(db, 'friendRequests'), {
         senderId: currentUser.uid,
         senderName: currentUser.displayName || currentUser.email.split('@')[0],
@@ -128,6 +151,17 @@ function Navbar() {
         status: 'pending',
         timestamp: serverTimestamp(),
         read: false
+      });
+
+      // Add notification for the receiver
+      await addDoc(collection(db, 'notifications'), {
+        type: 'friend_request',
+        userId: receiverId,
+        senderId: currentUser.uid,
+        senderName: currentUser.displayName || currentUser.email.split('@')[0],
+        message: `${currentUser.displayName || currentUser.email.split('@')[0]} sent you a friend request`,
+        read: false,
+        createdAt: serverTimestamp()
       });
 
       alert('Friend request sent!');
@@ -158,6 +192,17 @@ function Navbar() {
             user1Name: request.senderName,
             user2Name: request.receiverName,
             timestamp: serverTimestamp()
+          });
+
+          // Notify the sender that their request was accepted
+          await addDoc(collection(db, 'notifications'), {
+            type: 'friend_accepted',
+            userId: request.senderId,
+            senderId: currentUser.uid,
+            senderName: currentUser.displayName || currentUser.email.split('@')[0],
+            message: `${currentUser.displayName || currentUser.email.split('@')[0]} accepted your friend request`,
+            read: false,
+            createdAt: serverTimestamp()
           });
         }
       } else {

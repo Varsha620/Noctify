@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import AddBillModal from '../components/AddBillModal';
 import { db } from '../firebase';
-import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs,query,where,or  } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs, query, where, or, serverTimestamp } from 'firebase/firestore';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 
@@ -12,17 +12,22 @@ const getCurrentMonthTotal = (bills, currentUserId) => {
   const start = startOfMonth(now);
   const end = endOfMonth(now);
 
-  return bills
-    .filter(bill => {
-      const billDate = bill.createdAt;
-      if (!billDate) return false;
-      
-      // Only include bills you created
-      return bill.createdBy === currentUserId && 
-             billDate >= start && 
-             billDate <= end;
-    })
-    .reduce((sum, bill) => sum + Number(bill.amount), 0);
+  let total = 0;
+  bills.forEach(bill => {
+    const billDate = bill.createdAt;
+    if (!billDate || billDate < start || billDate > end) return;
+    
+    if (bill.createdBy === currentUserId) {
+      // Full amount for bills you created
+      total += Number(bill.amount);
+    } else if (bill.splitTo?.includes(currentUserId)) {
+      // Your share for bills split with you
+      const share = Number(bill.amount) / (bill.splitTo.length || 1);
+      total += share;
+    }
+  });
+  
+  return total;
 };
 
 function ExpenseTracker() {
@@ -37,20 +42,20 @@ function ExpenseTracker() {
 
   // Get pending bills for current user
   const getPendingBills = () => {
-  if (!currentUser) return [];
-  
-  return bills.filter(bill => {
-    // Bills you created that are pending
-    if (bill.createdBy === currentUser.uid && bill.status !== 'Paid') {
-      return true;
-    }
+    if (!currentUser) return [];
     
-    // Bills split with you that you haven't paid
-    return bill.splitTo?.includes(currentUser.uid) && 
-           !bill.paidBy?.includes(currentUser.uid) &&
-           bill.status !== 'Paid';
-  });
-};
+    return bills.filter(bill => {
+      // Bills you created that are pending
+      if (bill.createdBy === currentUser.uid && bill.status !== 'Paid') {
+        return true;
+      }
+      
+      // Bills split with you that you haven't paid
+      return bill.splitTo?.includes(currentUser.uid) && 
+             !bill.paidBy?.includes(currentUser.uid) &&
+             bill.status !== 'Paid';
+    });
+  };
 
   // Toggle payment status for a user
   const togglePaymentStatus = async (billId, person, currentPaidBy) => {
@@ -76,75 +81,111 @@ function ExpenseTracker() {
 
   // Fetch bills data
   useEffect(() => {
-  if (!currentUser) return;
+    if (!currentUser) return;
 
-  const unsubscribe = onSnapshot(
-    query(
-      collection(db, 'bills'),
-      or(
-        where('createdBy', '==', currentUser.uid),
-        where('splitTo', 'array-contains', currentUser.uid)
-      )
-    ), 
-    (snapshot) => {
-      const billsData = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        createdAt: doc.data().createdAt?.toDate()
-      }));
-      setBills(billsData);
-    }
-  );
+    const unsubscribe = onSnapshot(
+      query(
+        collection(db, 'bills'),
+        or(
+          where('createdBy', '==', currentUser.uid),
+          where('splitTo', 'array-contains', currentUser.uid)
+        )
+      ), 
+      (snapshot) => {
+        const billsData = snapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          createdAt: doc.data().createdAt?.toDate()
+        }));
+        setBills(billsData);
+      }
+    );
 
-  return () => unsubscribe();
-}, [currentUser]);
+    return () => unsubscribe();
+  }, [currentUser]);
   
   // Fetch Friends for the split bill feature
   useEffect(() => {
     if (!currentUser) return;
 
     const fetchFriends = async () => {
-      const querySnapshot = await getDocs(collection(db, 'users'));
-      const usersList = querySnapshot.docs.map(doc => doc.data().name);
-      setFriends(usersList.filter(u => u !== currentUser.uid));
+      try {
+        // Get friends from both directions
+        const friendsQuery1 = query(
+          collection(db, 'friends'),
+          where('user1', '==', currentUser.uid)
+        );
+        
+        const friendsQuery2 = query(
+          collection(db, 'friends'),
+          where('user2', '==', currentUser.uid)
+        );
+
+        const [snapshot1, snapshot2] = await Promise.all([
+          getDocs(friendsQuery1),
+          getDocs(friendsQuery2)
+        ]);
+
+        const friendsList = [];
+        
+        snapshot1.docs.forEach(doc => {
+          const data = doc.data();
+          friendsList.push({
+            uid: data.user2,
+            name: data.user2Name
+          });
+        });
+
+        snapshot2.docs.forEach(doc => {
+          const data = doc.data();
+          friendsList.push({
+            uid: data.user1,
+            name: data.user1Name
+          });
+        });
+
+        setFriends(friendsList);
+      } catch (error) {
+        console.error('Error fetching friends:', error);
+      }
     };
 
     fetchFriends();
   }, [currentUser]);
 
   useEffect(() => {
-  if (!currentUser) return;
+    if (!currentUser) return;
 
-  let paid = 0;
-  let owe = 0;
-  const now = new Date();
-  const currentMonth = now.getMonth();
-  const currentYear = now.getFullYear();
+    let paid = 0;
+    let owe = 0;
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
 
-  bills.forEach((bill) => {
-    const billDate = bill.createdAt;
-    if (!billDate || billDate.getMonth() !== currentMonth || billDate.getFullYear() !== currentYear) return;
+    bills.forEach((bill) => {
+      const billDate = bill.createdAt;
+      if (!billDate || billDate.getMonth() !== currentMonth || billDate.getFullYear() !== currentYear) return;
 
-    // Your own bills (full amount)
-    if (bill.createdBy === currentUser.uid) {
-      paid += Number(bill.amount);
-    }
-    
-    // Bills split with you (your share)
-    if (bill.splitTo?.includes(currentUser.uid)) {
-      const share = bill.amount / (bill.splitTo.length || 1);
-      
-      if (bill.paidBy?.includes(currentUser.uid)) {
-        paid += share;
-      } else {
-        owe += share;
+      // Your own bills (full amount)
+      if (bill.createdBy === currentUser.uid) {
+        paid += Number(bill.amount);
       }
-    }
-  });
+      
+      // Bills split with you (your share)
+      if (bill.splitTo?.includes(currentUser.uid)) {
+        const share = bill.amount / (bill.splitTo.length || 1);
+        
+        if (bill.paidBy?.includes(currentUser.uid)) {
+          paid += share;
+        } else {
+          owe += share;
+        }
+      }
+    });
 
-  setYouPaid(paid);
-  setYouOwe(owe);
-}, [bills, currentUser]);
+    setYouPaid(paid);
+    setYouOwe(owe);
+  }, [bills, currentUser]);
 
   const pendingBills = getPendingBills();
 
@@ -206,9 +247,13 @@ function ExpenseTracker() {
                     <div key={bill.id} className="flex items-center justify-between p-3 rounded-lg bg-white/20">
                       <div>
                         <h4 className="font-medium text-white">{bill.description}</h4>
-                        <p className="text-sm text-white/80">Amount: Rs.{(bill.amount / (bill.splitTo?.length || 1)).toFixed(2)}</p>
+                        <p className="text-sm text-white/80">
+                          Amount: Rs.{bill.createdBy === currentUser.uid 
+                            ? bill.amount 
+                            : (bill.amount / (bill.splitTo?.length || 1)).toFixed(2)
+                          }
+                        </p>
                       </div>
-                      
                     </div>
                   ))
                 ) : (
@@ -226,7 +271,10 @@ function ExpenseTracker() {
                   </svg>
                   <p className="mt-3 mb-5 ml-2 text-base md:text-lg text-white/90">Split a new bill.</p>
                 </div>
-                <button className="mt-4 px-4 py-2 bg-white text-[#F32D17] rounded-xl hover:bg-gray-100 text-sm w-fit font-medium transition-colors">
+                <button 
+                  className="mt-4 px-4 py-2 bg-white text-[#F32D17] rounded-xl hover:bg-gray-100 text-sm w-fit font-medium transition-colors"
+                  onClick={() => setAddModalOpen(true)}
+                >
                   Split Now →
                 </button>
               </div>
@@ -272,7 +320,12 @@ function ExpenseTracker() {
                     <>
                       <tr key={bill.id} className="h-12 border-b border-white/20">
                         <td className="flex gap-1">
-                          {bill.splitTo && bill.splitTo.length > 0 ? (
+                          <span className={`bg-white/20 text-white px-2 py-1 rounded-full text-xs font-semibold ${
+                            bill.createdBy === currentUser.uid ? 'bg-[#F32D17]' : 'bg-[#5E000C]'
+                          }`}>
+                            {bill.createdBy === currentUser.uid ? 'You' : 'Friend'}
+                          </span>
+                          {bill.splitTo && bill.splitTo.length > 0 && (
                             bill.splitTo.map((name, idx) => (
                               <span
                                 key={idx}
@@ -281,10 +334,6 @@ function ExpenseTracker() {
                                 {name.split(' ').map(w => w[0]).join('').toUpperCase()}
                               </span>
                             ))
-                          ) : (
-                            <span className="px-2 py-1 text-xs font-semibold text-white rounded-full bg-white/20">
-                              {bill.createdBy?.charAt(0).toUpperCase() || 'U'}
-                            </span>
                           )}
                         </td>
                         <td className="px-4">Rs.{bill.amount}</td>
@@ -330,27 +379,7 @@ function ExpenseTracker() {
                               </div>
                             </div>
                           </td>
-                          <td className="flex gap-1">
-  <span className={`bg-white/20 text-white px-2 py-1 rounded-full text-xs font-semibold ${
-    bill.createdBy === currentUser.uid ? 'bg-[#F32D17]' : 'bg-[#5E000C]'
-  }`}>
-    {bill.createdBy === currentUser.uid ? 'You' : 'Friend'}
-  </span>
-  {bill.splitTo && bill.splitTo.length > 0 && (
-    bill.splitTo.map((name, idx) => (
-      name !== currentUser.uid && (
-        <span
-          key={idx}
-          className="px-2 py-1 text-xs font-semibold text-white rounded-full bg-white/20"
-        >
-          {name.split(' ').map(w => w[0]).join('').toUpperCase()}
-        </span>
-      )
-    ))
-  )}
-</td>
                         </tr>
-                        
                       )}
                     </>
                   ))}
@@ -372,8 +401,31 @@ function ExpenseTracker() {
               ...billData,
               paidBy: [],
               createdAt: new Date(),
-              createdBy: currentUser.uid
+              createdBy: currentUser.uid,
+              status: 'Pending'
             });
+
+            // Send notifications to split members
+            if (billData.splitTo && billData.splitTo.length > 0) {
+              billData.splitTo.forEach(async (memberName) => {
+                // Find the member's UID from friends list
+                const friend = friends.find(f => f.name === memberName);
+                if (friend) {
+                  await addDoc(collection(db, 'notifications'), {
+                    type: 'expense_split',
+                    userId: friend.uid,
+                    senderId: currentUser.uid,
+                    senderName: currentUser.displayName || currentUser.email.split('@')[0],
+                    message: `${currentUser.displayName || currentUser.email.split('@')[0]} split a bill with you: ${billData.description}`,
+                    billId: docRef.id,
+                    amount: billData.amount,
+                    read: false,
+                    createdAt: serverTimestamp()
+                  });
+                }
+              });
+            }
+
             console.log('Bill saved with ID:', docRef.id);
             setAddModalOpen(false);
           } catch (error) {
