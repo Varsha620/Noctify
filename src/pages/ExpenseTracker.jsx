@@ -3,18 +3,26 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import AddBillModal from '../components/AddBillModal';
 import { db } from '../firebase';
-import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs,query,where,or  } from 'firebase/firestore';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 
-const getCurrentMonthTotal = (bills, currentUser) => {
+const getCurrentMonthTotal = (bills, currentUserId) => {
   const now = new Date();
   const start = startOfMonth(now);
   const end = endOfMonth(now);
 
   return bills
-    .filter(b => b.createdBy === currentUser && b.createdAt?.toDate() >= start && b.createdAt?.toDate() <= end)
-    .reduce((sum, b) => sum + Number(b.amount), 0);
+    .filter(bill => {
+      const billDate = bill.createdAt;
+      if (!billDate) return false;
+      
+      // Only include bills you created
+      return bill.createdBy === currentUserId && 
+             billDate >= start && 
+             billDate <= end;
+    })
+    .reduce((sum, bill) => sum + Number(bill.amount), 0);
 };
 
 function ExpenseTracker() {
@@ -29,13 +37,20 @@ function ExpenseTracker() {
 
   // Get pending bills for current user
   const getPendingBills = () => {
-    if (!currentUser) return [];
-    return bills.filter(bill => 
-      bill.splitTo?.includes(currentUser.uid) && 
-      !bill.paidBy?.includes(currentUser.uid) &&
-      bill.status !== 'Paid'
-    );
-  };
+  if (!currentUser) return [];
+  
+  return bills.filter(bill => {
+    // Bills you created that are pending
+    if (bill.createdBy === currentUser.uid && bill.status !== 'Paid') {
+      return true;
+    }
+    
+    // Bills split with you that you haven't paid
+    return bill.splitTo?.includes(currentUser.uid) && 
+           !bill.paidBy?.includes(currentUser.uid) &&
+           bill.status !== 'Paid';
+  });
+};
 
   // Toggle payment status for a user
   const togglePaymentStatus = async (billId, person, currentPaidBy) => {
@@ -61,18 +76,28 @@ function ExpenseTracker() {
 
   // Fetch bills data
   useEffect(() => {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    const unsubscribe = onSnapshot(collection(db, 'bills'), (snapshot) => {
+  const unsubscribe = onSnapshot(
+    query(
+      collection(db, 'bills'),
+      or(
+        where('createdBy', '==', currentUser.uid),
+        where('splitTo', 'array-contains', currentUser.uid)
+      )
+    ), 
+    (snapshot) => {
       const billsData = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
       }));
       setBills(billsData);
-    });
+    }
+  );
 
-    return () => unsubscribe();
-  }, [currentUser]);
+  return () => unsubscribe();
+}, [currentUser]);
   
   // Fetch Friends for the split bill feature
   useEffect(() => {
@@ -88,32 +113,38 @@ function ExpenseTracker() {
   }, [currentUser]);
 
   useEffect(() => {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    let paid = 0;
-    let owe = 0;
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+  let paid = 0;
+  let owe = 0;
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
-    bills.forEach((bill) => {
-      const billDate = bill.createdAt?.toDate?.();
-      if (!billDate || billDate.getMonth() !== currentMonth || billDate.getFullYear() !== currentYear) return;
+  bills.forEach((bill) => {
+    const billDate = bill.createdAt;
+    if (!billDate || billDate.getMonth() !== currentMonth || billDate.getFullYear() !== currentYear) return;
 
-      const share = bill.amount / (bill.splitTo?.length || 1);
-
+    // Your own bills (full amount)
+    if (bill.createdBy === currentUser.uid) {
+      paid += Number(bill.amount);
+    }
+    
+    // Bills split with you (your share)
+    if (bill.splitTo?.includes(currentUser.uid)) {
+      const share = bill.amount / (bill.splitTo.length || 1);
+      
       if (bill.paidBy?.includes(currentUser.uid)) {
         paid += share;
-      }
-
-      if (bill.splitTo?.includes(currentUser.uid) && !bill.paidBy?.includes(currentUser.uid)) {
+      } else {
         owe += share;
       }
-    });
+    }
+  });
 
-    setYouPaid(paid);
-    setYouOwe(owe);
-  }, [bills, currentUser]);
+  setYouPaid(paid);
+  setYouOwe(owe);
+}, [bills, currentUser]);
 
   const pendingBills = getPendingBills();
 
@@ -158,7 +189,7 @@ function ExpenseTracker() {
                   <h3 className="text-xl font-light md:text-2xl">Average spent this Month:</h3>
                   <p className="text-2xl font-semibold md:text-3xl">Rs.{myMonthlyTotal}</p>
                 </div>
-                <div className="bg-white/20 rounded-lg p-3 shadow-lg text-white ml-6">
+                <div className="p-3 ml-6 text-white rounded-lg shadow-lg bg-white/20">
                   <h3 className="mb-4 font-normal text-md">My Summary (This Month)</h3>
                   <p>✅ You Paid: <strong>Rs.{youPaid.toFixed(2)}</strong></p>
                   <p>💸 You Owe: <strong>Rs.{youOwe.toFixed(2)}</strong></p>
@@ -168,25 +199,20 @@ function ExpenseTracker() {
 
             {/* My Pending Bills Section */}
             <div className="bg-gradient-to-br from-[#F32D17] to-[#C1000F] p-4 md:p-6 rounded-2xl shadow-lg">
-              <h3 className="text-xl md:text-2xl font-semibold text-white mb-4">My Pending Bills</h3>
-              <div className="space-y-3 max-h-60 overflow-y-auto">
+              <h3 className="mb-4 text-xl font-semibold text-white md:text-2xl">My Pending Bills</h3>
+              <div className="space-y-3 overflow-y-auto max-h-60">
                 {pendingBills.length > 0 ? (
                   pendingBills.map((bill) => (
-                    <div key={bill.id} className="bg-white/20 rounded-lg p-3 flex justify-between items-center">
+                    <div key={bill.id} className="flex items-center justify-between p-3 rounded-lg bg-white/20">
                       <div>
-                        <h4 className="text-white font-medium">{bill.description}</h4>
-                        <p className="text-white/80 text-sm">Amount: Rs.{(bill.amount / (bill.splitTo?.length || 1)).toFixed(2)}</p>
+                        <h4 className="font-medium text-white">{bill.description}</h4>
+                        <p className="text-sm text-white/80">Amount: Rs.{(bill.amount / (bill.splitTo?.length || 1)).toFixed(2)}</p>
                       </div>
-                      <button
-                        onClick={() => togglePaymentStatus(bill.id, currentUser.uid, bill.paidBy || [])}
-                        className="px-3 py-1 bg-white text-[#F32D17] rounded-lg hover:bg-gray-100 transition-colors text-sm font-medium"
-                      >
-                        Mark Paid
-                      </button>
+                      
                     </div>
                   ))
                 ) : (
-                  <p className="text-white/70 text-center py-4">No pending bills</p>
+                  <p className="py-4 text-center text-white/70">No pending bills</p>
                 )}
               </div>
             </div>
@@ -213,7 +239,7 @@ function ExpenseTracker() {
                   <p className="mt-3 mb-5 ml-2 text-base md:text-lg text-white/90">Add a new bill.</p>
                 </div>
                 <button 
-                  className="px-4 py-2 mt-4 text-sm text-white bg-white/20 rounded-xl hover:bg-white/30 w-fit font-medium transition-colors"
+                  className="px-4 py-2 mt-4 text-sm font-medium text-white transition-colors bg-white/20 rounded-xl hover:bg-white/30 w-fit"
                   onClick={() => setAddModalOpen(true)}
                 >
                   Add Now →
@@ -225,14 +251,14 @@ function ExpenseTracker() {
           {/* Transactions Panel */}
           <div className="flex-1 p-4 rounded-2xl md:p-6 bg-gradient-to-br from-[#FD8839] to-[#F32D17]">
             <div className="flex items-center justify-between mb-5">
-              <h4 className="text-xl md:text-2xl font-medium text-white">Transactions</h4>
+              <h4 className="text-xl font-medium text-white md:text-2xl">Transactions</h4>
               <button className="text-sm text-white/80 hover:text-white hover:underline">See all</button>
             </div>
 
             {/* Transactions Table */}
-            <div className="overflow-x-auto bg-white/10 rounded-xl p-4">
+            <div className="p-4 overflow-x-auto bg-white/10 rounded-xl">
               <table className="w-full text-left min-w-[400px]">
-                <thead className="text-white font-medium border-b-2 border-white/30">
+                <thead className="font-medium text-white border-b-2 border-white/30">
                   <tr>
                     <th className="pb-2">Members</th>
                     <th className="px-4 pb-2">Amount</th>
@@ -250,13 +276,13 @@ function ExpenseTracker() {
                             bill.splitTo.map((name, idx) => (
                               <span
                                 key={idx}
-                                className="bg-white/20 text-white px-2 py-1 rounded-full text-xs font-semibold"
+                                className="px-2 py-1 text-xs font-semibold text-white rounded-full bg-white/20"
                               >
                                 {name.split(' ').map(w => w[0]).join('').toUpperCase()}
                               </span>
                             ))
                           ) : (
-                            <span className="bg-white/20 text-white px-2 py-1 rounded-full text-xs font-semibold">
+                            <span className="px-2 py-1 text-xs font-semibold text-white rounded-full bg-white/20">
                               {bill.createdBy?.charAt(0).toUpperCase() || 'U'}
                             </span>
                           )}
@@ -282,13 +308,13 @@ function ExpenseTracker() {
                       </tr>
                       {expandedBillId === bill.id && (
                         <tr>
-                          <td colSpan="5" className="px-4 py-3 bg-white/5 rounded-lg">
+                          <td colSpan="5" className="px-4 py-3 rounded-lg bg-white/5">
                             <div className="flex flex-col gap-3">
                               <h5 className="font-medium text-white">Payment Details:</h5>
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                              <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
                                 {bill.splitTo?.map((person, idx) => (
-                                  <div key={idx} className="flex items-center justify-between px-3 py-2 bg-white/10 rounded-lg">
-                                    <span className="text-white font-medium">{person}</span>
+                                  <div key={idx} className="flex items-center justify-between px-3 py-2 rounded-lg bg-white/10">
+                                    <span className="font-medium text-white">{person}</span>
                                     <button
                                       onClick={() => togglePaymentStatus(bill.id, person, bill.paidBy || [])}
                                       className={`px-3 py-1 text-xs rounded-full font-medium transition-colors ${
@@ -304,7 +330,27 @@ function ExpenseTracker() {
                               </div>
                             </div>
                           </td>
+                          <td className="flex gap-1">
+  <span className={`bg-white/20 text-white px-2 py-1 rounded-full text-xs font-semibold ${
+    bill.createdBy === currentUser.uid ? 'bg-[#F32D17]' : 'bg-[#5E000C]'
+  }`}>
+    {bill.createdBy === currentUser.uid ? 'You' : 'Friend'}
+  </span>
+  {bill.splitTo && bill.splitTo.length > 0 && (
+    bill.splitTo.map((name, idx) => (
+      name !== currentUser.uid && (
+        <span
+          key={idx}
+          className="px-2 py-1 text-xs font-semibold text-white rounded-full bg-white/20"
+        >
+          {name.split(' ').map(w => w[0]).join('').toUpperCase()}
+        </span>
+      )
+    ))
+  )}
+</td>
                         </tr>
+                        
                       )}
                     </>
                   ))}
