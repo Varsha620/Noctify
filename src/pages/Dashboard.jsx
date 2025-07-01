@@ -94,19 +94,20 @@ function Dashboard() {
     fetchDashboardData();
   }, [currentUser]);
 
-  // Listen for real-time notifications
+  // Listen for real-time notifications including status updates
   useEffect(() => {
     if (!currentUser) return;
 
-    const q = query(
+    // Listen for notifications
+    const notificationsQuery = query(
       collection(db, 'notifications'),
       where('userId', '==', currentUser.uid),
       orderBy('createdAt', 'desc'),
       limit(5)
     );
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const recentUpdates = snapshot.docs.map(doc => {
+    const unsubscribeNotifications = onSnapshot(notificationsQuery, (snapshot) => {
+      const notifications = snapshot.docs.map(doc => {
         const data = doc.data();
         return {
           id: doc.id,
@@ -120,13 +121,44 @@ function Dashboard() {
 
       setDashboardData(prev => ({
         ...prev,
-        recentNotifications: recentUpdates
+        recentNotifications: notifications
       }));
-    }, (error) => {
-      console.error("Error fetching notifications:", error);
     });
 
-    return () => unsubscribe();
+    // Listen for status updates from friends
+    const statusUpdatesQuery = query(
+      collection(db, 'status_updates'),
+      where('expiresAt', '>', new Date()),
+      orderBy('createdAt', 'desc'),
+      limit(3)
+    );
+
+    const unsubscribeStatusUpdates = onSnapshot(statusUpdatesQuery, (snapshot) => {
+      const statusUpdates = snapshot.docs.map(doc => {
+        const data = doc.data();
+        return {
+          id: doc.id,
+          message: `Posted: ${data.content}`,
+          senderId: data.userId,
+          senderName: data.userId === currentUser.uid ? 'You' : 'Friend',
+          timestamp: data.createdAt?.toDate() || new Date(),
+          type: 'status_update'
+        };
+      });
+
+      // Merge with existing notifications
+      setDashboardData(prev => ({
+        ...prev,
+        recentNotifications: [...prev.recentNotifications, ...statusUpdates]
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 5)
+      }));
+    });
+
+    return () => {
+      unsubscribeNotifications();
+      unsubscribeStatusUpdates();
+    };
   }, [currentUser]);
 
   const formatTime = (date) => {
@@ -144,26 +176,28 @@ function Dashboard() {
         return `${notification.senderName} added you to ${notification.groupName}`;
       case 'expense_split':
         return `${notification.senderName} split a bill with you`;
+      case 'status_update':
+        return notification.message;
       default:
         return notification.message || 'New notification';
     }
   };
 
   return (
-    <div className="flex ">
+    <div className="flex bg-[#072D44]">
       <Sidebar />
-      <div className="flex flex-col w-full min-h-screen bg-[#ffffff] p-6">
+      <div className="flex flex-col w-full min-h-screen bg-[#072D44] p-6">
         <Navbar />
-        <h1 className="text-3xl font-light text-[#5E000C] mt-6 mb-4 ml-2"> DASHBOARD</h1>
+        <h1 className="text-3xl font-light text-[#D0D7E1] mt-6 mb-4 ml-2"> DASHBOARD</h1>
         
         {/* Main content */}
         <div className="flex flex-col gap-6 mt-2 md:flex-row ">
           {/* Left section */}
           <div className="flex flex-col w-full gap-6 md:w-2/3">
             {/* Welcome card */}
-            <div className="bg-gradient-to-br from-[#FD8839] to-[#F32D17] p-6 rounded-2xl flex justify-between items-center h-90 text-white"
+            <div className="bg-gradient-to-br from-[#064469] to-[#5790AB] p-6 rounded-2xl flex justify-between items-center h-90 text-white"
               style={{
-                boxShadow: '-10px 9px 10px #C1000F'
+                boxShadow: '-10px 9px 10px #9CCDDB'
               }}>
               {/* Left side */}
               <div className="flex flex-col justify-between">
@@ -189,37 +223,37 @@ function Dashboard() {
 
           {/* Right section - Notifications */}
           <div className="w-full md:w-1/3">
-            <div className="p-4 bg-white rounded-xl">
+            <div className="p-4 bg-[#D0D7E1] rounded-xl">
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {/* Bell SVG */}
                   <svg width="28" height="28" viewBox="0 0 28 28" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M11.6667 24.5H16.3333C16.3333 25.7833 15.2833 26.8333 14 26.8333C12.7167 26.8333 11.6667 25.7833 11.6667 24.5ZM24.5 22.1667V23.3333H3.5V22.1667L5.83333 19.8333V12.8333C5.83333 9.21666 8.16667 6.06666 11.6667 5.01666V4.66666C11.6667 3.38333 12.7167 2.33333 14 2.33333C15.2833 2.33333 16.3333 3.38333 16.3333 4.66666V5.01666C19.8333 6.06666 22.1667 9.21666 22.1667 12.8333V19.8333L24.5 22.1667ZM19.8333 12.8333C19.8333 9.56666 17.2667 6.99999 14 6.99999C10.7333 6.99999 8.16667 9.56666 8.16667 12.8333V21H19.8333V12.8333Z" fill="#FD8839"/>
+                    <path d="M11.6667 24.5H16.3333C16.3333 25.7833 15.2833 26.8333 14 26.8333C12.7167 26.8333 11.6667 25.7833 11.6667 24.5ZM24.5 22.1667V23.3333H3.5V22.1667L5.83333 19.8333V12.8333C5.83333 9.21666 8.16667 6.06666 11.6667 5.01666V4.66666C11.6667 3.38333 12.7167 2.33333 14 2.33333C15.2833 2.33333 16.3333 3.38333 16.3333 4.66666V5.01666C19.8333 6.06666 22.1667 9.21666 22.1667 12.8333V19.8333L24.5 22.1667ZM19.8333 12.8333C19.8333 9.56666 17.2667 6.99999 14 6.99999C10.7333 6.99999 8.16667 9.56666 8.16667 12.8333V21H19.8333V12.8333Z" fill="#064469"/>
                   </svg>
-                  <h3 className="font-600 text-[#5E000C]">Notifications</h3>
+                  <h3 className="font-600 text-[#072D44]">Notifications</h3>
                 </div>
-                <button className="text-sm text-[#FD8839]">See all</button>
+                <button className="text-sm text-[#064469]">See all</button>
               </div>
               <ul className="mt-4 space-y-4 overflow-y-auto max-h-80">
                 {dashboardData.recentNotifications.length > 0 ? (
                   dashboardData.recentNotifications.map((notification, index) => (
-                    <li key={index} className="flex items-center justify-between bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 rounded-lg px-3 py-3"
+                    <li key={index} className="flex items-center justify-between bg-gradient-to-r from-[#064469]/10 to-[#5790AB]/10 rounded-lg px-3 py-3"
                       style={{
-                        boxShadow: '-8px 5px 10px rgba(253, 136, 57, 0.3)'
+                        boxShadow: '-8px 5px 10px rgba(6, 68, 105, 0.3)'
                       }}>
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-r from-[#FD8839] to-[#F32D17] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                        <div className="w-8 h-8 bg-gradient-to-r from-[#064469] to-[#5790AB] rounded-full flex items-center justify-center text-white text-xs font-bold">
                           {notification.senderName.charAt(0).toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-sm font-medium text-[#5E000C]">
+                          <p className="text-sm font-medium text-[#072D44]">
                             {notification.senderId === currentUser?.uid ? 'You' : notification.senderName}
                           </p>
-                          <p className="text-xs text-gray-600">{getNotificationMessage(notification)}</p>
-                          <p className="text-xs text-gray-500">{formatTime(notification.timestamp)}</p>
+                          <p className="text-xs text-[#064469]">{getNotificationMessage(notification)}</p>
+                          <p className="text-xs text-[#5790AB]">{formatTime(notification.timestamp)}</p>
                         </div>
                       </div>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FD8839] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#064469] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <circle cx="12" cy="6" r="1.5"/>
                         <circle cx="12" cy="12" r="1.5"/>
                         <circle cx="12" cy="18" r="1.5"/>
@@ -228,34 +262,34 @@ function Dashboard() {
                   ))
                 ) : (
                   <>
-                    <li className="flex items-center justify-between bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 rounded-lg px-3 py-3"
+                    <li className="flex items-center justify-between bg-gradient-to-r from-[#064469]/10 to-[#5790AB]/10 rounded-lg px-3 py-3"
                       style={{
-                        boxShadow: '-8px 5px 10px rgba(253, 136, 57, 0.3)'
+                        boxShadow: '-8px 5px 10px rgba(6, 68, 105, 0.3)'
                       }}>
-                      <span className="text-[#5E000C]">Welcome to Noctify! 🎉</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FD8839] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <span className="text-[#072D44]">Welcome to Noctify! 🎉</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#064469] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <circle cx="12" cy="6" r="1.5"/>
                         <circle cx="12" cy="12" r="1.5"/>
                         <circle cx="12" cy="18" r="1.5"/>
                       </svg>
                     </li>
-                    <li className="flex items-center justify-between bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 rounded-lg px-3 py-3"
+                    <li className="flex items-center justify-between bg-gradient-to-r from-[#064469]/10 to-[#5790AB]/10 rounded-lg px-3 py-3"
                       style={{
-                        boxShadow: '-8px 5px 10px rgba(253, 136, 57, 0.3)'
+                        boxShadow: '-8px 5px 10px rgba(6, 68, 105, 0.3)'
                       }}>
-                      <span className="text-[#5E000C]">Start tracking your expenses 💰</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FD8839] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <span className="text-[#072D44]">Start tracking your expenses 💰</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#064469] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <circle cx="12" cy="6" r="1.5"/>
                         <circle cx="12" cy="12" r="1.5"/>
                         <circle cx="12" cy="18" r="1.5"/>
                       </svg>
                     </li>
-                    <li className="flex items-center justify-between bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 rounded-lg px-3 py-3"
+                    <li className="flex items-center justify-between bg-gradient-to-r from-[#064469]/10 to-[#5790AB]/10 rounded-lg px-3 py-3"
                       style={{
-                        boxShadow: '-8px 5px 10px rgba(253, 136, 57, 0.3)'
+                        boxShadow: '-8px 5px 10px rgba(6, 68, 105, 0.3)'
                       }}>
-                      <span className="text-[#5E000C]">Add your first exam 📚</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FD8839] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <span className="text-[#072D44]">Add your first exam 📚</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#064469] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <circle cx="12" cy="6" r="1.5"/>
                         <circle cx="12" cy="12" r="1.5"/>
                         <circle cx="12" cy="18" r="1.5"/>

@@ -1,9 +1,9 @@
 function Card({ title, value, icon, onClick }) {
   return (
     <div
-      className="bg-gradient-to-br from-[#FD8839] to-[#F32D17] p-4 rounded-2xl gap-5 m-4 cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
+      className="bg-gradient-to-br from-[#064469] to-[#5790AB] p-4 rounded-2xl gap-5 m-4 cursor-pointer transform transition-all duration-300 hover:scale-105 hover:shadow-2xl"
       style={{
-        boxShadow: '-8px 5px 10px #C1000F'
+        boxShadow: '-8px 5px 10px #9CCDDB'
       }}
       onClick={onClick}
     >

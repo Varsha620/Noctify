@@ -1,6 +1,5 @@
-// src/App.jsx
 import Dashboard from './pages/Dashboard'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom'
 import ExamTracker from './pages/ExamTracker'
 import ExpenseTracker from './pages/ExpenseTracker'
 import NotifyFriends from './pages/NotifyFriends'
@@ -9,32 +8,109 @@ import Login from './pages/Login'
 import Settings from './pages/Settings'
 import MobileNavbar from './components/MobileNavbar'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
-import { AuthProvider } from './context/AuthContext'
+import { AuthProvider, useAuth } from './context/AuthContext'
+
+// Protected Route Component
+function ProtectedRoute({ children }) {
+  const { currentUser, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-[#072D44]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#5790AB]"></div>
+          <p className="mt-4 text-[#D0D7E1]">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  if (!currentUser) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  return children;
+}
+
+function AppContent() {
+  const { currentUser } = useAuth();
+
+  return (
+    <div className="relative">
+      <Routes>
+        <Route 
+          path="/login" 
+          element={currentUser ? <Navigate to="/" replace /> : <Login />} 
+        />
+        <Route 
+          path="/" 
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/exam-tracker" 
+          element={
+            <ProtectedRoute>
+              <ExamTracker />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/expense-tracker" 
+          element={
+            <ProtectedRoute>
+              <ExpenseTracker />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/notify-friends" 
+          element={
+            <ProtectedRoute>
+              <NotifyFriends />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/bat-bot" 
+          element={
+            <ProtectedRoute>
+              <BatBot />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/settings" 
+          element={
+            <ProtectedRoute>
+              <Settings />
+            </ProtectedRoute>
+          } 
+        />
+      </Routes>
+      
+      {/* Mobile Navigation - Show on all pages except login */}
+      {currentUser && (
+        <Routes>
+          <Route path="/login" element={null} />
+          <Route path="*" element={<MobileNavbar />} />
+        </Routes>
+      )}
+
+      {/* PWA Install Prompt */}
+      <PWAInstallPrompt />
+    </div>
+  );
+}
 
 function App() {
   return (
     <Router>
       <AuthProvider>
-        <div className="relative">
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Dashboard />} />
-            <Route path="/exam-tracker" element={<ExamTracker />} />
-            <Route path="/expense-tracker" element={<ExpenseTracker />} />
-            <Route path="/notify-friends" element={<NotifyFriends />} />
-            <Route path="/bat-bot" element={<BatBot />} />
-            <Route path="/settings" element={<Settings />} />
-          </Routes>
-          
-          {/* Mobile Navigation - Show on all pages except login */}
-          <Routes>
-            <Route path="/login" element={null} />
-            <Route path="*" element={<MobileNavbar />} />
-          </Routes>
-
-          {/* PWA Install Prompt */}
-          <PWAInstallPrompt />
-        </div>
+        <AppContent />
       </AuthProvider>
     </Router>
   )
