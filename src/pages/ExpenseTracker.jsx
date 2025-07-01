@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import AddBillModal from '../components/AddBillModal';
 import { db } from '../firebase';
-import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs, query, where, or, serverTimestamp, limit, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs, query, where, serverTimestamp, limit, orderBy } from 'firebase/firestore';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 
@@ -85,36 +85,69 @@ function ExpenseTracker() {
     }
   };
 
-  // Optimized bills fetching with pagination
+  // Simplified bills fetching - fetch separately and merge in client
   useEffect(() => {
     if (!currentUser) return;
 
-    const unsubscribe = onSnapshot(
-      query(
+    const unsubscribers = [];
+
+    // Fetch bills created by user
+    const createdByQuery = query(
+      collection(db, 'bills'),
+      where('createdBy', '==', currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(25)
+    );
+
+    const unsubscribe1 = onSnapshot(createdByQuery, (snapshot) => {
+      const createdBills = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
+
+      // Fetch bills split with user
+      const splitWithQuery = query(
         collection(db, 'bills'),
-        or(
-          where('createdBy', '==', currentUser.uid),
-          where('splitTo', 'array-contains', currentUser.uid)
-        ),
+        where('splitTo', 'array-contains', currentUser.uid),
         orderBy('createdAt', 'desc'),
-        limit(50) // Limit to recent 50 bills for performance
-      ), 
-      (snapshot) => {
-        const billsData = snapshot.docs.map(doc => ({
+        limit(25)
+      );
+
+      const unsubscribe2 = onSnapshot(splitWithQuery, (snapshot) => {
+        const splitBills = snapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data(),
           createdAt: doc.data().createdAt?.toDate()
         }));
-        setBills(billsData);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching bills:', error);
-        setLoading(false);
-      }
-    );
 
-    return () => unsubscribe();
+        // Merge and deduplicate bills
+        const allBills = [...createdBills, ...splitBills];
+        const uniqueBills = allBills.filter((bill, index, self) => 
+          index === self.findIndex(b => b.id === bill.id)
+        );
+
+        // Sort by creation date
+        uniqueBills.sort((a, b) => (b.createdAt || new Date()) - (a.createdAt || new Date()));
+
+        setBills(uniqueBills);
+        setLoading(false);
+      }, (error) => {
+        console.error('Error fetching split bills:', error);
+        setLoading(false);
+      });
+
+      unsubscribers.push(unsubscribe2);
+    }, (error) => {
+      console.error('Error fetching created bills:', error);
+      setLoading(false);
+    });
+
+    unsubscribers.push(unsubscribe1);
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
   }, [currentUser]);
   
   // Fetch Friends for the split bill feature

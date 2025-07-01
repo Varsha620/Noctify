@@ -4,7 +4,7 @@ import Sidebar from '../components/Sidebar'
 import { useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { db } from '../firebase'
-import { collection, getDocs, query, orderBy, limit, where, onSnapshot, or } from 'firebase/firestore'
+import { collection, getDocs, query, orderBy, limit, where, onSnapshot } from 'firebase/firestore'
 import { useAuth } from '../context/AuthContext'
 
 function Dashboard() {
@@ -31,26 +31,53 @@ function Dashboard() {
       if (!currentUser) return;
 
       try {
-        // Fetch expense data - bills created by user or split with user
-        const billsQuery = query(
+        // Fetch expense data - simplified to avoid complex indexes
+        const billsCreatedQuery = query(
           collection(db, 'bills'),
-          or(
-            where('createdBy', '==', currentUser.uid),
-            where('splitTo', 'array-contains', currentUser.uid)
-          )
+          where('createdBy', '==', currentUser.uid)
         );
-        const billsSnapshot = await getDocs(billsQuery);
-        const bills = billsSnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate()
-        }));
+        
+        const billsSplitQuery = query(
+          collection(db, 'bills'),
+          where('splitTo', 'array-contains', currentUser.uid)
+        );
+
+        const [billsCreatedSnapshot, billsSplitSnapshot] = await Promise.all([
+          getDocs(billsCreatedQuery),
+          getDocs(billsSplitQuery)
+        ]);
+
+        // Combine and deduplicate bills
+        const allBills = [];
+        const billIds = new Set();
+
+        billsCreatedSnapshot.docs.forEach(doc => {
+          if (!billIds.has(doc.id)) {
+            billIds.add(doc.id);
+            allBills.push({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate()
+            });
+          }
+        });
+
+        billsSplitSnapshot.docs.forEach(doc => {
+          if (!billIds.has(doc.id)) {
+            billIds.add(doc.id);
+            allBills.push({
+              id: doc.id,
+              ...doc.data(),
+              createdAt: doc.data().createdAt?.toDate()
+            });
+          }
+        });
 
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
         
         let monthlyTotal = 0;
-        bills.forEach(bill => {
+        allBills.forEach(bill => {
           const billDate = bill.createdAt;
           if (billDate && billDate.getMonth() === currentMonth && billDate.getFullYear() === currentYear) {
             if (bill.createdBy === currentUser.uid) {
@@ -94,15 +121,14 @@ function Dashboard() {
     fetchDashboardData();
   }, [currentUser]);
 
-  // Listen for real-time notifications including status updates
+  // Listen for real-time notifications - simplified to avoid complex indexes
   useEffect(() => {
     if (!currentUser) return;
 
-    // Listen for notifications
+    // Listen for notifications - simplified query
     const notificationsQuery = query(
       collection(db, 'notifications'),
       where('userId', '==', currentUser.uid),
-      orderBy('createdAt', 'desc'),
       limit(5)
     );
 
@@ -119,23 +145,32 @@ function Dashboard() {
         };
       });
 
+      // Sort notifications by timestamp in client
+      notifications.sort((a, b) => b.timestamp - a.timestamp);
+
       setDashboardData(prev => ({
         ...prev,
-        recentNotifications: notifications
+        recentNotifications: notifications.slice(0, 5)
       }));
     });
 
-    // Listen for status updates from friends
+    // Listen for status updates - simplified query without range filters
     const statusUpdatesQuery = query(
       collection(db, 'status_updates'),
-      where('expiresAt', '>', new Date()),
-      orderBy('createdAt', 'desc'),
       limit(3)
     );
 
     const unsubscribeStatusUpdates = onSnapshot(statusUpdatesQuery, (snapshot) => {
       const statusUpdates = snapshot.docs.map(doc => {
         const data = doc.data();
+        const expiresAt = data.expiresAt?.toDate();
+        const now = new Date();
+        
+        // Filter expired status updates in client
+        if (expiresAt && expiresAt <= now) {
+          return null;
+        }
+
         return {
           id: doc.id,
           message: `Posted: ${data.content}`,
@@ -144,7 +179,10 @@ function Dashboard() {
           timestamp: data.createdAt?.toDate() || new Date(),
           type: 'status_update'
         };
-      });
+      }).filter(Boolean); // Remove null entries
+
+      // Sort by creation date in client
+      statusUpdates.sort((a, b) => b.timestamp - a.timestamp);
 
       // Merge with existing notifications
       setDashboardData(prev => ({
