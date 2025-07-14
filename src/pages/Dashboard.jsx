@@ -163,10 +163,52 @@ function Dashboard() {
         };
       });
 
+      // Sort notifications by timestamp in client
+      notifications.sort((a, b) => b.timestamp - a.timestamp);
+
+      setDashboardData(prev => ({
+        ...prev,
+        recentNotifications: notifications.slice(0, 5)
+      }));
+    });
+
+    // Listen for status updates - simplified query without range filters
+    const statusUpdatesQuery = query(
+      collection(db, 'status_updates'),
+      limit(3)
+    );
+
+    const unsubscribeStatusUpdates = onSnapshot(statusUpdatesQuery, (snapshot) => {
+      const statusUpdates = snapshot.docs.map(doc => {
+        const data = doc.data();
+        const expiresAt = data.expiresAt?.toDate();
+        const now = new Date();
+        
+        // Filter expired status updates in client
+        if (expiresAt && expiresAt <= now) {
+          return null;
+        }
+
+        return {
+          id: doc.id,
+          message: `Posted: ${data.content}`,
+          senderId: data.userId,
+          senderName: data.userId === currentUser.uid ? 'You' : 'Friend',
+          timestamp: data.createdAt?.toDate() || new Date(),
+          type: 'status_update'
+        };
+      }).filter(Boolean); // Remove null entries
+
+      // Sort by creation date in client
+      statusUpdates.sort((a, b) => b.timestamp - a.timestamp);
+
+      // Merge with existing notifications
       setDashboardData(prev => ({
         ...prev,
         recentNotifications: notifications
       }));
+    }, (error) => {
+      console.error("Error fetching notifications:", error);
     });
 
     return () => {
@@ -177,23 +219,6 @@ function Dashboard() {
   const formatTime = (date) => {
     if (!date) return '';
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
-
-  const getNotificationMessage = (notification) => {
-    switch (notification.type) {
-      case 'friend_request':
-        return `${notification.senderName} sent you a friend request`;
-      case 'friend_accepted':
-        return `${notification.senderName} accepted your friend request`;
-      case 'group_invite':
-        return `${notification.senderName} added you to ${notification.groupName}`;
-      case 'expense_split':
-        return `${notification.senderName} split a bill with you`;
-      case 'status_update':
-        return notification.message;
-      default:
-        return notification.message || 'New notification';
-    }
   };
 
   return (
@@ -279,8 +304,8 @@ function Dashboard() {
                       style={{
                         boxShadow: '-8px 5px 10px rgba(6, 68, 105, 0.3)'
                       }}>
-                      <span className="text-[#072D44]">Welcome to Noctify! 🎉</span>
-                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#064469] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <span className="text-[#5E000C]">Welcome to Noctify! 🎉</span>
+                      <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4 text-[#FD8839] cursor-pointer" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <circle cx="12" cy="6" r="1.5"/>
                         <circle cx="12" cy="12" r="1.5"/>
                         <circle cx="12" cy="18" r="1.5"/>

@@ -3,7 +3,7 @@ import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
 import AddBillModal from '../components/AddBillModal';
 import { db } from '../firebase';
-import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs, query, where, serverTimestamp, limit, orderBy } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, updateDoc, doc, getDocs,query,where,or  } from 'firebase/firestore';
 import { startOfMonth, endOfMonth } from 'date-fns';
 import { useAuth } from '../context/AuthContext';
 
@@ -35,14 +35,8 @@ function ExpenseTracker() {
   const { currentUser } = useAuth();
   const [youPaid, setYouPaid] = useState(0);
   const [youOwe, setYouOwe] = useState(0);
+  const myMonthlyTotal = getCurrentMonthTotal(bills, currentUser?.uid);
   const [friends, setFriends] = useState([]);
-  const [loading, setLoading] = useState(true);
-
-  // Memoized calculations for better performance
-  const myMonthlyTotal = useMemo(() => 
-    getCurrentMonthTotal(bills, currentUser?.uid), 
-    [bills, currentUser?.uid]
-  );
 
   // Get pending bills for current user
   const getPendingBills = useMemo(() => {
@@ -85,20 +79,18 @@ function ExpenseTracker() {
 
   // Fetch bills
   useEffect(() => {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    const unsubscribers = [];
-
-    // Fetch bills created by user
-    const createdByQuery = query(
+  const unsubscribe = onSnapshot(
+    query(
       collection(db, 'bills'),
-      where('createdBy', '==', currentUser.uid),
-      orderBy('createdAt', 'desc'),
-      limit(25)
-    );
-
-    const unsubscribe1 = onSnapshot(createdByQuery, (snapshot) => {
-      const createdBills = snapshot.docs.map(doc => ({
+      or(
+        where('createdBy', '==', currentUser.uid),
+        where('splitTo', 'array-contains', currentUser.uid)
+      )
+    ), 
+    (snapshot) => {
+      const billsData = snapshot.docs.map(doc => ({
         id: doc.id,
         ...doc.data(),
         createdAt: doc.data().createdAt?.toDate()
@@ -192,19 +184,18 @@ function ExpenseTracker() {
     fetchFriends();
   }, [currentUser]);
 
-  // Calculate paid and owe amounts
   useEffect(() => {
-    if (!currentUser) return;
+  if (!currentUser) return;
 
-    let paid = 0;
-    let owe = 0;
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+  let paid = 0;
+  let owe = 0;
+  const now = new Date();
+  const currentMonth = now.getMonth();
+  const currentYear = now.getFullYear();
 
-    bills.forEach((bill) => {
-      const billDate = bill.createdAt;
-      if (!billDate || billDate.getMonth() !== currentMonth || billDate.getFullYear() !== currentYear) return;
+  bills.forEach((bill) => {
+    const billDate = bill.createdAt;
+    if (!billDate || billDate.getMonth() !== currentMonth || billDate.getFullYear() !== currentYear) return;
 
       // Your own bills (full amount)
       if (bill.createdBy === currentUser.uid) {
@@ -231,15 +222,15 @@ function ExpenseTracker() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-[#072D44]">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#5790AB]"></div>
-          <p className="mt-4 text-[#D0D7E1]">Loading expenses...</p>
+          <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-[#F32D17]"></div>
+          <p className="mt-4 text-[#5E000C]">Loading...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col w-full min-h-screen bg-[#072D44] md:flex-row">
+    <div className="flex flex-col w-full min-h-screen bg-white md:flex-row">
       {/* Sidebar */}
       <div className="hidden md:flex">
         <Sidebar />
@@ -312,6 +303,7 @@ function ExpenseTracker() {
                           {bill.status || 'Pending'}
                         </span>
                       </div>
+                      
                     </div>
                   ))
                 ) : (
@@ -403,6 +395,10 @@ function ExpenseTracker() {
                                 {person.name?.split(' ').map(w => w[0]).join('').toUpperCase() || person.uid?.substring(0, 2).toUpperCase()}
                               </span>
                             ))
+                          ) : (
+                            <span className="px-2 py-1 text-xs font-semibold text-white rounded-full bg-white/20">
+                              {bill.createdBy?.charAt(0).toUpperCase() || 'U'}
+                            </span>
                           )}
                         </td>
                         <td className="px-4">₹{bill.amount}</td>
@@ -455,7 +451,27 @@ function ExpenseTracker() {
                               </div>
                             </div>
                           </td>
+                          <td className="flex gap-1">
+  <span className={`bg-white/20 text-white px-2 py-1 rounded-full text-xs font-semibold ${
+    bill.createdBy === currentUser.uid ? 'bg-[#F32D17]' : 'bg-[#5E000C]'
+  }`}>
+    {bill.createdBy === currentUser.uid ? 'You' : 'Friend'}
+  </span>
+  {bill.splitTo && bill.splitTo.length > 0 && (
+    bill.splitTo.map((name, idx) => (
+      name !== currentUser.uid && (
+        <span
+          key={idx}
+          className="px-2 py-1 text-xs font-semibold text-white rounded-full bg-white/20"
+        >
+          {name.split(' ').map(w => w[0]).join('').toUpperCase()}
+        </span>
+      )
+    ))
+  )}
+</td>
                         </tr>
+                        
                       )}
                     </>
                   ))}
@@ -486,27 +502,8 @@ function ExpenseTracker() {
               ...billData,
               paidBy: [],
               createdAt: new Date(),
-              createdBy: currentUser.uid,
-              status: 'Pending'
+              createdBy: currentUser.uid
             });
-
-            // Send notifications to split members
-            if (billData.splitTo && billData.splitTo.length > 0) {
-              billData.splitTo.forEach(async (person) => {
-                await addDoc(collection(db, 'notifications'), {
-                  type: 'expense_split',
-                  userId: person.uid,
-                  senderId: currentUser.uid,
-                  senderName: currentUser.displayName || currentUser.email.split('@')[0],
-                  message: `${currentUser.displayName || currentUser.email.split('@')[0]} split a bill with you: ${billData.description}`,
-                  billId: docRef.id,
-                  amount: billData.amount,
-                  read: false,
-                  createdAt: serverTimestamp()
-                });
-              });
-            }
-
             console.log('Bill saved with ID:', docRef.id);
           } catch (error) {
             console.error('Error adding bill:', error);
