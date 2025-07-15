@@ -2,77 +2,256 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Users can read and write their own user document
+    
+    // Helper functions for authentication and authorization
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function isValidUser() {
+      return isAuthenticated() && 
+             request.auth.uid != null && 
+             request.auth.uid.size() > 0;
+    }
+    
+    // Users collection - profile data
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Users can read all user documents for search functionality
-    match /users/{userId} {
-      allow read: if request.auth != null;
-    }
-    
-    // Friend requests - users can read requests sent to them or by them
-    match /friendRequests/{requestId} {
-      allow read, write: if request.auth != null && 
-        (request.auth.uid == resource.data.senderId || 
-         request.auth.uid == resource.data.receiverId);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.senderId;
-    }
-    
-    // Friends collection - users can read friendships they're part of
-    match /friends/{friendshipId} {
-      allow read, write: if request.auth != null && 
-        (request.auth.uid == resource.data.user1 || 
-         request.auth.uid == resource.data.user2);
-      allow create: if request.auth != null && 
-        (request.auth.uid == request.resource.data.user1 || 
-         request.auth.uid == request.resource.data.user2);
-    }
-    
-    // Bills - users can read/write bills they created or are split with
-    match /bills/{billId} {
-      allow read, write: if request.auth != null && 
-        (request.auth.uid == resource.data.createdBy || 
-         request.auth.uid in resource.data.splitTo);
-      allow create: if request.auth != null && request.auth.uid == request.resource.data.createdBy;
-    }
-    
-    // Exams - users can only access their own exams
-    match /users/{userId}/exams/{examId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Groups - users can read/write groups they're members of
-    match /groups/{groupId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid in resource.data.members;
-      allow create: if request.auth != null && 
-        request.auth.uid in request.resource.data.members;
-        
-      // Messages within groups
-      match /messages/{messageId} {
-        allow read, write: if request.auth != null && 
-          request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
-        allow create: if request.auth != null && 
-          request.auth.uid == request.resource.data.senderId;
+      // Users can read and write their own profile
+      allow read, write: if isOwner(userId);
+      
+      // Users can read other users' basic info for search/friend functionality
+      allow read: if isAuthenticated();
+      
+      // Allow creation of user profile during signup
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == userId &&
+                   request.resource.data.keys().hasAll(['name', 'email']) &&
+                   request.resource.data.email == request.auth.token.email;
+      
+      // Nested exams collection
+      match /exams/{examId} {
+        allow read, write, create, delete: if isOwner(userId);
       }
     }
     
-    // Notifications - users can read their own notifications
-    match /notifications/{notificationId} {
-      allow read, write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null;
+    // Friend requests collection
+    match /friendRequests/{requestId} {
+      // Users can read requests sent to them or by them
+      allow read: if isAuthenticated() && 
+                 (request.auth.uid == resource.data.senderId || 
+                  request.auth.uid == resource.data.receiverId);
+      
+      // Users can create friend requests (only as sender)
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.senderId &&
+                   request.resource.data.keys().hasAll(['senderId', 'receiverId', 'senderName', 'receiverName', 'status', 'timestamp']) &&
+                   request.resource.data.status == 'pending';
+      
+      // Users can update requests (accept/reject) if they are the receiver
+      allow update: if isAuthenticated() && 
+                   request.auth.uid == resource.data.receiverId &&
+                   request.resource.data.keys().hasAll(['status']) &&
+                   request.resource.data.status in ['accepted', 'rejected'];
+      
+      // Users can delete their own sent requests
+      allow delete: if isAuthenticated() && 
+                   request.auth.uid == resource.data.senderId;
     }
     
-    // Status updates - users can read updates from friends and create their own
+    // Friends collection - established friendships
+    match /friends/{friendshipId} {
+      // Users can read friendships they're part of
+      allow read: if isAuthenticated() && 
+                 (request.auth.uid == resource.data.user1 || 
+                  request.auth.uid == resource.data.user2);
+      
+      // Users can create friendships (typically done after accepting friend request)
+      allow create: if isAuthenticated() && 
+                   (request.auth.uid == request.resource.data.user1 || 
+                    request.auth.uid == request.resource.data.user2) &&
+                   request.resource.data.keys().hasAll(['user1', 'user2', 'user1Name', 'user2Name', 'timestamp']);
+      
+      // Users can delete friendships they're part of
+      allow delete: if isAuthenticated() && 
+                   (request.auth.uid == resource.data.user1 || 
+                    request.auth.uid == resource.data.user2);
+      
+      // No updates allowed - friendships are created and deleted, not modified
+    }
+    
+    // Bills collection - expense tracking
+    match /bills/{billId} {
+      // Users can read bills they created or are split with
+      allow read: if isAuthenticated() && 
+                 (request.auth.uid == resource.data.createdBy || 
+                  request.auth.uid in resource.data.splitTo.map(['uid']));
+      
+      // Users can create bills (only as creator)
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.createdBy &&
+                   request.resource.data.keys().hasAll(['amount', 'description', 'createdBy', 'createdAt', 'status']) &&
+                   request.resource.data.amount is number &&
+                   request.resource.data.amount > 0;
+      
+      // Users can update bills they created or are involved in (for payment status)
+      allow update: if isAuthenticated() && 
+                   (request.auth.uid == resource.data.createdBy || 
+                    request.auth.uid in resource.data.splitTo.map(['uid']));
+      
+      // Only creators can delete bills
+      allow delete: if isAuthenticated() && 
+                   request.auth.uid == resource.data.createdBy;
+    }
+    
+    // Groups collection - chat groups
+    match /groups/{groupId} {
+      // Users can read groups they're members of
+      allow read: if isAuthenticated() && 
+                 request.auth.uid in resource.data.members;
+      
+      // Users can create groups (and must include themselves as member)
+      allow create: if isAuthenticated() && 
+                   request.auth.uid in request.resource.data.members &&
+                   request.auth.uid == request.resource.data.createdBy &&
+                   request.resource.data.keys().hasAll(['name', 'members', 'createdBy', 'createdAt']);
+      
+      // Group members can update group info
+      allow update: if isAuthenticated() && 
+                   request.auth.uid in resource.data.members;
+      
+      // Only group creator can delete group
+      allow delete: if isAuthenticated() && 
+                   request.auth.uid == resource.data.createdBy;
+      
+      // Messages subcollection within groups
+      match /messages/{messageId} {
+        // Users can read messages in groups they're members of
+        allow read: if isAuthenticated() && 
+                   request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members;
+        
+        // Users can create messages in groups they're members of (only as sender)
+        allow create: if isAuthenticated() && 
+                     request.auth.uid in get(/databases/$(database)/documents/groups/$(groupId)).data.members &&
+                     request.auth.uid == request.resource.data.senderId &&
+                     request.resource.data.keys().hasAll(['text', 'senderId', 'senderName', 'timestamp']);
+        
+        // Users can update their own messages
+        allow update: if isAuthenticated() && 
+                     request.auth.uid == resource.data.senderId;
+        
+        // Users can delete their own messages
+        allow delete: if isAuthenticated() && 
+                     request.auth.uid == resource.data.senderId;
+      }
+    }
+    
+    // Notifications collection
+    match /notifications/{notificationId} {
+      // Users can read their own notifications
+      allow read: if isAuthenticated() && 
+                 request.auth.uid == resource.data.userId;
+      
+      // System/other users can create notifications for users
+      allow create: if isAuthenticated() && 
+                   request.resource.data.keys().hasAll(['type', 'userId', 'message', 'read', 'createdAt']);
+      
+      // Users can update their own notifications (mark as read)
+      allow update: if isAuthenticated() && 
+                   request.auth.uid == resource.data.userId;
+      
+      // Users can delete their own notifications
+      allow delete: if isAuthenticated() && 
+                   request.auth.uid == resource.data.userId;
+    }
+    
+    // Status updates collection - friend status updates
     match /status_updates/{updateId} {
-      allow read: if request.auth != null;
-      allow write: if request.auth != null && 
-        request.auth.uid == resource.data.userId;
-      allow create: if request.auth != null && 
-        request.auth.uid == request.resource.data.userId;
+      // Users can read status updates from friends and their own
+      allow read: if isAuthenticated();
+      
+      // Users can create their own status updates
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.userId &&
+                   request.resource.data.keys().hasAll(['userId', 'content', 'createdAt', 'expiresAt']) &&
+                   request.resource.data.content is string &&
+                   request.resource.data.content.size() > 0 &&
+                   request.resource.data.content.size() <= 500;
+      
+      // Users can update their own status updates
+      allow update: if isAuthenticated() && 
+                   request.auth.uid == resource.data.userId;
+      
+      // Users can delete their own status updates
+      allow delete: if isAuthenticated() && 
+                   request.auth.uid == resource.data.userId;
+    }
+    
+    // Additional collections for future features
+    
+    // User settings (if stored in Firestore instead of localStorage)
+    match /userSettings/{userId} {
+      allow read, write, create, delete: if isOwner(userId);
+    }
+    
+    // App feedback/support tickets
+    match /feedback/{feedbackId} {
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.userId;
+      allow read: if isAuthenticated() && 
+                 request.auth.uid == resource.data.userId;
+    }
+    
+    // System announcements (read-only for users)
+    match /announcements/{announcementId} {
+      allow read: if isAuthenticated();
+    }
+    
+    // User activity logs (write-only for tracking)
+    match /activityLogs/{logId} {
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.userId;
+    }
+    
+    // Shared expenses/group bills (extended functionality)
+    match /sharedExpenses/{expenseId} {
+      allow read: if isAuthenticated() && 
+                 request.auth.uid in resource.data.participants;
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.createdBy;
+      allow update: if isAuthenticated() && 
+                   request.auth.uid in resource.data.participants;
+    }
+    
+    // Study groups (for exam collaboration)
+    match /studyGroups/{studyGroupId} {
+      allow read: if isAuthenticated() && 
+                 request.auth.uid in resource.data.members;
+      allow create: if isAuthenticated() && 
+                   request.auth.uid in request.resource.data.members;
+      allow update: if isAuthenticated() && 
+                   request.auth.uid in resource.data.members;
+      allow delete: if isAuthenticated() && 
+                   request.auth.uid == resource.data.createdBy;
+    }
+    
+    // File attachments metadata (if implementing file sharing)
+    match /attachments/{attachmentId} {
+      allow read: if isAuthenticated() && 
+                 (request.auth.uid == resource.data.uploadedBy || 
+                  request.auth.uid in resource.data.sharedWith);
+      allow create: if isAuthenticated() && 
+                   request.auth.uid == request.resource.data.uploadedBy;
+      allow delete: if isAuthenticated() && 
+                   request.auth.uid == resource.data.uploadedBy;
+    }
+    
+    // Default deny rule for any unmatched paths
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }
