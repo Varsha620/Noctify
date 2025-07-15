@@ -98,9 +98,12 @@ function NotifyFriends() {
     return () => unsubscribe();
   }, [currentUser]);
 
-  // Fetch messages for active group
+  // Fetch messages for active group with real-time updates
   useEffect(() => {
-    if (!activeGroupId) return;
+    if (!activeGroupId) {
+      setMessages([]);
+      return;
+    }
 
     const q = query(
       collection(db, "groups", activeGroupId, "messages"),
@@ -114,12 +117,14 @@ function NotifyFriends() {
         timestamp: doc.data().timestamp?.toDate()
       }));
       setMessages(msgs);
+    }, (error) => {
+      console.error("Error fetching messages:", error);
     });
 
     return () => unsubscribe();
   }, [activeGroupId]);
 
-  // Fetch user's groups
+  // Fetch user's groups with real-time updates
   useEffect(() => {
     if (!currentUser) return;
 
@@ -136,6 +141,8 @@ function NotifyFriends() {
         createdAt: doc.data().createdAt?.toDate()
       }));
       setGroups(groupsData);
+    }, (error) => {
+      console.error("Error fetching groups:", error);
     });
 
     return () => unsubscribe();
@@ -178,6 +185,53 @@ function NotifyFriends() {
     name: 'Select a chat', 
     members: [], 
     avatar: '👥' 
+  };
+
+  // Get member names for display
+  const getMemberNames = (group) => {
+    if (!group.members) return [];
+    return group.members.map(memberId => {
+      if (memberId === currentUser?.uid) return 'You';
+      const friend = friends.find(f => f.uid === memberId);
+      return friend?.name || 'Unknown';
+    });
+  };
+
+  // Create new group
+  const handleCreateGroup = async ({ groupName, members, avatar }) => {
+    try {
+      const docRef = await addDoc(collection(db, 'groups'), {
+        name: groupName,
+        members,
+        avatar: avatar || '👥',
+        createdAt: serverTimestamp(),
+        createdBy: currentUser.uid
+      });
+      
+      // Add notification to all group members
+      members.forEach(async (memberId) => {
+        if (memberId !== currentUser.uid) {
+          await addDoc(collection(db, 'notifications'), {
+            type: 'group_invite',
+            groupId: docRef.id,
+            groupName,
+            userId: memberId,
+            senderId: currentUser.uid,
+            senderName: currentUser.displayName || currentUser.email,
+            read: false,
+            createdAt: serverTimestamp()
+          });
+        }
+      });
+
+      setActiveGroupId(docRef.id);
+      setGroupModalOpen(false);
+      if (window.innerWidth < 768) {
+        setShowChatView(true);
+      }
+    } catch (err) {
+      console.error('Error creating group:', err);
+    }
   };
 
   return (
@@ -226,7 +280,7 @@ function NotifyFriends() {
                           <ChatCard
                             name={group.name}
                             icon={group.avatar || '👥'}
-                            lastUpdate={`${group.members?.length || 0} members`}
+                            lastUpdate={`${getMemberNames(group).join(', ')}`}
                             isActive={false}
                           />
                         </div>
@@ -261,7 +315,7 @@ function NotifyFriends() {
                       <span className="text-3xl animate-bounce">{activeGroup.avatar || '👥'}</span>
                       <div>
                         <h3 className="font-bold">{activeGroup.name}</h3>
-                        <p className="text-sm opacity-80">{activeGroup.members?.length || 0} members</p>
+                        <p className="text-sm opacity-80">{getMemberNames(activeGroup).join(', ')}</p>
                       </div>
                     </div>
                     <div className="w-8"></div>
@@ -354,7 +408,7 @@ function NotifyFriends() {
                         <ChatCard
                           name={group.name}
                           icon={group.avatar || '👥'}
-                          lastUpdate={`${group.members?.length || 0} members`}
+                          lastUpdate={`${getMemberNames(group).join(', ')}`}
                           isActive={activeGroupId === group.id}
                         />
                       </div>
@@ -385,7 +439,7 @@ function NotifyFriends() {
                         <span className="text-3xl animate-bounce">{activeGroup.avatar || '👥'}</span>
                         <div>
                           <h3 className="font-bold">{activeGroup.name}</h3>
-                          <p className="text-sm opacity-80">{activeGroup.members?.length || 0} members</p>
+                          <p className="text-sm opacity-80">{getMemberNames(activeGroup).join(', ')}</p>
                         </div>
                       </div>
                     </div>
@@ -470,41 +524,7 @@ function NotifyFriends() {
         isOpen={isGroupModalOpen}
         onClose={() => setGroupModalOpen(false)}
         friends={friends}
-        onCreate={async ({ groupName, members, avatar }) => {
-          try {
-            const docRef = await addDoc(collection(db, 'groups'), {
-              name: groupName,
-              members,
-              avatar: avatar || '👥',
-              createdAt: serverTimestamp(),
-              createdBy: currentUser.uid
-            });
-            
-            // Add notification to all group members
-            members.forEach(async (memberId) => {
-              if (memberId !== currentUser.uid) {
-                await addDoc(collection(db, 'notifications'), {
-                  type: 'group_invite',
-                  groupId: docRef.id,
-                  groupName,
-                  userId: memberId,
-                  senderId: currentUser.uid,
-                  senderName: currentUser.displayName || currentUser.email,
-                  read: false,
-                  createdAt: serverTimestamp()
-                });
-              }
-            });
-
-            setActiveGroupId(docRef.id);
-            setGroupModalOpen(false);
-            if (window.innerWidth < 768) {
-              setShowChatView(true);
-            }
-          } catch (err) {
-            console.error('Error creating group:', err);
-          }
-        }}
+        onCreate={handleCreateGroup}
       />
     </div>
   );
