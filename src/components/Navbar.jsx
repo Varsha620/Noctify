@@ -236,7 +236,7 @@ function Navbar() {
       {/* Search */}
       <div className="relative w-full max-w-md md:w-1/3" ref={searchRef}>
         <input
-          className="w-full p-3 pl-10 rounded-xl border border-[#FD8839] focus:outline-none focus:ring-2 focus:ring-[#F32D17] bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 transition-all duration-200 focus:shadow-lg placeholder-gray-500"
+          className="w-full p-3 pl-10 rounded-xl border border-[#5790AB] focus:outline-none focus:ring-2 focus:ring-[#064469] bg-gradient-to-r from-[#5790AB]/10 to-[#064469]/10 transition-all duration-200 focus:shadow-lg placeholder-gray-500"
           placeholder="Search friends by name or email..."
           type="text"
           value={searchQuery}
@@ -244,11 +244,11 @@ function Navbar() {
         />
         <span className="absolute transition-colors duration-200 transform -translate-y-1/2 left-3 top-1/2">
           {isSearching ? (
-            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#FD8839]"></div>
+            <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-[#5790AB]"></div>
           ) : (
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24">
-              <circle cx="11" cy="11" r="7" stroke="#FD8839" strokeWidth="2"/>
-              <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#FD8839" strokeWidth="2" strokeLinecap="round"/>
+              <circle cx="11" cy="11" r="7" stroke="#5790AB" strokeWidth="2"/>
+              <line x1="16.5" y1="16.5" x2="21" y2="21" stroke="#5790AB" strokeWidth="2" strokeLinecap="round"/>
             </svg>
           )}
         </span>
@@ -258,14 +258,14 @@ function Navbar() {
           <div className="absolute left-0 right-0 z-50 mt-2 overflow-y-auto bg-white border border-gray-200 shadow-2xl top-full rounded-xl max-h-80 animate-fadeInScale">
             {isSearching ? (
               <div className="p-4 text-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#FD8839] mx-auto"></div>
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#5790AB] mx-auto"></div>
                 <p className="mt-2 text-gray-500">Searching...</p>
               </div>
             ) : searchResults.length > 0 ? (
               searchResults.map((user) => (
                 <div key={user.uid} className="flex items-center justify-between p-4 transition-colors border-b hover:bg-gray-50 last:border-b-0">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-gradient-to-r from-[#FD8839] to-[#F32D17] rounded-full flex items-center justify-center text-white font-bold">
+                    <div className="w-10 h-10 bg-gradient-to-r from-[#5790AB] to-[#064469] rounded-full flex items-center justify-center text-white font-bold">
                       {(user.name || user.email).charAt(0).toUpperCase()}
                     </div>
                     <div>
@@ -275,7 +275,7 @@ function Navbar() {
                   </div>
                   <button
                     onClick={() => sendFriendRequest(user.uid, user.name || user.email.split('@')[0])}
-                    className="px-4 py-2 bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white text-sm rounded-xl hover:from-[#F32D17] hover:to-[#C1000F] transition-all transform hover:scale-105"
+                    className="px-4 py-2 bg-gradient-to-r from-[#5790AB] to-[#064469] text-white text-sm rounded-xl hover:from-[#5992b5] hover:to-[#064469] transition-all transform hover:scale-105"
                   >
                     Add Friend
                   </button>
@@ -298,13 +298,13 @@ function Navbar() {
             className="relative p-2 transition-all duration-200 transform cursor-pointer hover:scale-110"
             onClick={() => setShowNotifications(!showNotifications)}
           >
-            <span className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-lg hover:from-[#F32D17] hover:to-[#C1000F] transition-all duration-200 hover:shadow-lg">
+            <span className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-[#5790AB] to-[#064469] text-lg hover:from-[#7bbfe7] hover:to-[#064469] transition-all duration-200 hover:shadow-lg">
               <svg width="26" height="26" viewBox="0 0 45 45" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M18.75 39.375H26.25C26.25 41.4375 24.5625 43.125 22.5 43.125C20.4375 43.125 18.75 41.4375 18.75 39.375ZM39.375 35.625V37.5H5.625V35.625L9.375 31.875V20.625C9.375 14.8125 13.125 9.75 18.75 8.0625V7.5C18.75 5.4375 20.4375 3.75 22.5 3.75C24.5625 3.75 26.25 5.4375 26.25 7.5V8.0625C31.875 9.75 35.625 14.8125 35.625 20.625V31.875L39.375 35.625ZM31.875 20.625C31.875 15.375 27.75 11.25 22.5 11.25C17.25 11.25 13.125 15.375 13.125 20.625V33.75H31.875V20.625Z" fill="white"/>
               </svg>
             </span>
             {unreadCount > 0 && (
-              <span className="absolute w-6 h-6 bg-[#C1000F] rounded-full -top-1 -right-1 flex items-center justify-center text-white text-xs font-bold animate-pulse">
+              <span className="absolute w-6 h-6 bg-[#2a7fb0] rounded-full -top-1 -right-1 flex items-center justify-center text-white text-xs font-bold animate-pulse">
                 {unreadCount}
               </span>
             )}
@@ -313,7 +313,7 @@ function Navbar() {
           {/* Notifications Dropdown */}
           {showNotifications && (
             <div className="absolute right-0 z-50 mt-2 overflow-y-auto bg-white border border-gray-200 shadow-2xl w-80 rounded-xl max-h-96 animate-fadeInScale">
-              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10">
+              <div className="p-4 border-b border-gray-200 bg-gradient-to-r from-[#5790AB]/10 to-[#064469]/10">
                 <h3 className="text-lg font-bold text-gray-900">Notifications</h3>
               </div>
               
@@ -334,7 +334,7 @@ function Navbar() {
                     {notification.type === 'friendRequest' && notification.status === 'pending' && (
                       <div>
                         <div className="flex items-center gap-3 mb-3">
-                          <div className="w-10 h-10 bg-gradient-to-r from-[#FD8839] to-[#F32D17] rounded-full flex items-center justify-center text-white font-bold">
+                          <div className="w-10 h-10 bg-gradient-to-r from-[#5790AB] to-[#064469] rounded-full flex items-center justify-center text-white font-bold">
                             {notification.senderName.charAt(0).toUpperCase()}
                           </div>
                           <div>
@@ -391,7 +391,7 @@ function Navbar() {
 
         {/* Message */}
         <div className="relative p-2 transition-all duration-200 transform cursor-pointer hover:scale-110">
-          <span className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-lg hover:from-[#F32D17] hover:to-[#C1000F] transition-all duration-200 hover:shadow-lg">
+          <span className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-r from-[#5790AB] to-[#064469] text-lg hover:from-[#78bbe2] hover:to-[#064469] transition-all duration-200 hover:shadow-lg">
             <svg width="28" height="28" viewBox="0 0 43 43" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M7.16663 21.5C7.16663 17.6986 8.67674 14.0528 11.3648 11.3648C14.0528 8.67678 17.6985 7.16667 21.5 7.16667C25.3014 7.16667 28.9471 8.67678 31.6352 11.3648C34.3232 14.0528 35.8333 17.6986 35.8333 21.5V30.6196C35.8333 32.1389 35.8333 32.895 35.6075 33.5024C35.428 33.9837 35.1471 34.4207 34.7839 34.784C34.4207 35.1472 33.9836 35.4281 33.5023 35.6076C32.895 35.8333 32.1371 35.8333 30.6195 35.8333H21.5C17.6985 35.8333 14.0528 34.3232 11.3648 31.6352C8.67674 28.9472 7.16663 25.3014 7.16663 21.5Z" stroke="white" strokeWidth="2"/>
               <path d="M16.125 19.7083H26.875M21.5 26.875H26.875" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
