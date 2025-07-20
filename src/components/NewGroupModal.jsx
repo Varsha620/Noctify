@@ -59,10 +59,10 @@ function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm">
       <div className="bg-white p-6 rounded-2xl w-[90%] max-w-md shadow-2xl max-h-[90vh] overflow-y-auto animate-fadeInScale">
-        <h2 className="text-2xl font-bold mb-6 text-[#5E000C] text-center">Create New Group</h2>
+        <h2 className="text-2xl font-bold mb-6 text-[#072D44] text-center">Create New Group</h2>
 
         {error && (
-          <div className="p-3 mb-4 text-red-700 bg-red-100 border border-red-400 rounded-lg">
+          <div className="p-3 mb-4 text-[#072D44]-700 bg-red-100 border border-red-400 rounded-lg">
             {error}
           </div>
         )}
@@ -75,7 +75,7 @@ function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
               placeholder="Enter group name"
               value={groupName}
               onChange={(e) => setGroupName(e.target.value)}
-              className="w-full p-3 border border-[#FD8839] rounded-xl focus:ring-2 focus:ring-[#F32D17] focus:border-transparent transition-all duration-200"
+              className="w-full p-3 border border-[#5790AB] rounded-xl focus:ring-2 focus:ring-[#064469] focus:border-transparent transition-all duration-200"
             />
           </div>
 
@@ -88,8 +88,8 @@ function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
                   key={index}
                   type="button"
                   onClick={() => setSelectedAvatar(avatar)}
-                  className={`w-8 h-8 rounded-full text-lg hover:bg-gradient-to-r hover:from-[#FD8839]/20 hover:to-[#F32D17]/20 transition-all duration-200 transform hover:scale-110 ${
-                    selectedAvatar === avatar ? 'bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white scale-110' : 'bg-gray-100 hover:bg-gray-200'
+                  className={`w-8 h-8 rounded-full text-lg hover:bg-gradient-to-r hover:from-[#072D44]/20 hover:to-[#064469]/20 transition-all duration-200 transform hover:scale-110 ${
+                    selectedAvatar === avatar ? 'bg-gradient-to-r from-[#9CCDDB] to-[#5790AB] text-white scale-110' : 'bg-gray-100 hover:bg-gray-200'
                   }`}
                 >
                   {avatar}
@@ -112,7 +112,7 @@ function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
               <>
                 <select
                   onChange={handleAddMember}
-                  className="w-full p-3 mb-3 border border-[#FD8839] rounded-xl focus:ring-2 focus:ring-[#F32D17] focus:border-transparent transition-all duration-200"
+                  className="w-full p-3 mb-3 border border-[#072D44] rounded-xl focus:ring-2 focus:ring-[#064469] focus:border-transparent transition-all duration-200"
                   defaultValue=""
                 >
                   <option value="" disabled>Select a friend to add</option>
@@ -132,9 +132,9 @@ function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
                       {selectedUserIds.map(uid => {
                         const friend = friends.find(f => f.uid === uid);
                         return (
-                          <div key={uid} className="flex items-center justify-between p-2 bg-gradient-to-r from-[#FD8839]/10 to-[#F32D17]/10 rounded-lg">
+                          <div key={uid} className="flex items-center justify-between p-2 bg-gradient-to-r from-[#072D44]/10 to-[#064469]/10 rounded-lg">
                             <div className="flex items-center gap-2">
-                              <div className="w-6 h-6 bg-gradient-to-r from-[#FD8839] to-[#F32D17] rounded-full flex items-center justify-center text-white text-xs font-bold">
+                              <div className="w-6 h-6 bg-gradient-to-r from-[#072D44] to-[#064469] rounded-full flex items-center justify-center text-white text-xs font-bold">
                                 {friend?.name?.charAt(0).toUpperCase()}
                               </div>
                               <span className="text-sm font-medium">{friend?.name}</span>
@@ -142,7 +142,7 @@ function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
                             <button
                               type="button"
                               onClick={() => handleRemoveMember(uid)}
-                              className="text-[#F32D17] hover:text-[#C1000F] transition-colors p-1 hover:bg-red-100 rounded"
+                              className="text-[#064469] hover:text-[#072D44] transition-colors p-1 hover:bg-red-100 rounded"
                             >
                               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -169,7 +169,7 @@ function NewGroupModal({ isOpen, onClose, onCreate, friends = [] }) {
           <button
             onClick={handleCreateGroup}
             disabled={friends.length === 0}
-            className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white rounded-xl hover:from-[#F32D17] hover:to-[#C1000F] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
+            className="flex-1 px-4 py-3 bg-gradient-to-r from-[#072D44] to-[#064469] text-white rounded-xl hover:from-[#064469] hover:to-[#072D44] disabled:opacity-50 disabled:cursor-not-allowed transition-all font-medium"
           >
             Create Group
           </button>

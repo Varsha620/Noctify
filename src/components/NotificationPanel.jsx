@@ -161,14 +161,14 @@ function NotificationPanel() {
   );
 
   return (
-    <div className="bg-gradient-to-br from-[#F32D17] to-[#C1000F] p-4 rounded-2xl shadow-lg h-full">
+    <div className="bg-gradient-to-br from-[#5790AB] to-[#072D44] p-4 rounded-2xl shadow-lg h-full">
       <div className="flex items-center justify-between mb-4">
         <h3 className="text-lg font-semibold text-white">Status Updates</h3>
         <div className="flex gap-2">
           <button 
             onClick={() => setActiveTab('all')}
             className={`px-3 py-1 text-xs rounded-full ${
-              activeTab === 'all' ? 'bg-white text-[#F32D17]' : 'bg-white/20 text-white'
+              activeTab === 'all' ? 'bg-white text-[#072D44]' : 'bg-white/20 text-white'
             }`}
           >
             All
@@ -176,7 +176,7 @@ function NotificationPanel() {
           <button 
             onClick={() => setActiveTab('unseen')}
             className={`px-3 py-1 text-xs rounded-full ${
-              activeTab === 'unseen' ? 'bg-white text-[#F32D17]' : 'bg-white/20 text-white'
+              activeTab === 'unseen' ? 'bg-white text-[#072D44]' : 'bg-white/20 text-white'
             }`}
           >
             Unseen
@@ -184,7 +184,7 @@ function NotificationPanel() {
           <button 
             onClick={() => setActiveTab('mine')}
             className={`px-3 py-1 text-xs rounded-full ${
-              activeTab === 'mine' ? 'bg-white text-[#F32D17]' : 'bg-white/20 text-white'
+              activeTab === 'mine' ? 'bg-white text-[#072D44]' : 'bg-white/20 text-white'
             }`}
           >
             My Status
@@ -204,7 +204,7 @@ function NotificationPanel() {
         <button
           onClick={postStatus}
           disabled={isPosting || !newStatus.trim()}
-          className="w-full py-2 bg-white text-[#F32D17] rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full py-2 bg-white text-[#072D44] rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed"
         >
           {isPosting ? 'Posting...' : 'Post Status'}
         </button>

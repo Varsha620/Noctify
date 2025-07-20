@@ -3,64 +3,13 @@ import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 
-function AddBillModal({ isOpen, onClose, onSubmit }) {
+function AddBillModal({ isOpen, onClose, onSubmit, friends = [] }) {
   const { currentUser } = useAuth();
   const [amount, setAmount] = useState('');
   const [description, setDescription] = useState('');
   const [shouldSplit, setShouldSplit] = useState(false);
-  const [friends, setFriends] = useState([]);
   const [splitTo, setSplitTo] = useState([]);
   const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    const fetchFriends = async () => {
-      if (!currentUser) return;
-      
-      try {
-        // Get friends from both directions
-        const friendsQuery1 = query(
-          collection(db, 'friends'),
-          where('user1', '==', currentUser.uid)
-        );
-        
-        const friendsQuery2 = query(
-          collection(db, 'friends'),
-          where('user2', '==', currentUser.uid)
-        );
-
-        const [snapshot1, snapshot2] = await Promise.all([
-          getDocs(friendsQuery1),
-          getDocs(friendsQuery2)
-        ]);
-
-        const friendsList = [];
-        
-        snapshot1.docs.forEach(doc => {
-          const data = doc.data();
-          friendsList.push({
-            uid: data.user2,
-            name: data.user2Name
-          });
-        });
-
-        snapshot2.docs.forEach(doc => {
-          const data = doc.data();
-          friendsList.push({
-            uid: data.user1,
-            name: data.user1Name
-          });
-        });
-
-        setFriends(friendsList);
-      } catch (error) {
-        console.error('Error fetching friends:', error);
-      }
-    };
-
-    if (isOpen) {
-      fetchFriends();
-    }
-  }, [currentUser, isOpen]);
 
   const handleSplitChange = (friendUid, friendName) => {
     setSplitTo(prev => {
@@ -104,7 +53,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40 backdrop-blur-sm">
       <div className="w-full max-w-md p-6 mx-4 bg-white shadow-2xl rounded-2xl animate-fadeInScale">
-        <h3 className="text-2xl font-bold mb-6 text-[#5E000C] text-center">Add New Bill</h3>
+        <h3 className="text-2xl font-bold mb-6 text-[#072D44] text-center">Add New Bill</h3>
         
         <form onSubmit={handleFormSubmit} className="space-y-4">
           <div>
@@ -114,7 +63,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
               value={amount}
               onChange={(e) => setAmount(e.target.value)}
               placeholder="Enter amount"
-              className="w-full p-3 border border-[#FD8839] rounded-xl focus:ring-2 focus:ring-[#F32D17] focus:border-transparent transition-all duration-200"
+              className="w-full p-3 border border-[#5790AB] rounded-xl focus:ring-2 focus:ring-[#064469] focus:border-transparent transition-all duration-200"
               required
             />
           </div>
@@ -126,7 +75,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="What's this bill for?"
-              className="w-full p-3 border border-[#FD8839] rounded-xl focus:ring-2 focus:ring-[#F32D17] focus:border-transparent transition-all duration-200"
+              className="w-full p-3 border border-[#5790AB] rounded-xl focus:ring-2 focus:ring-[#064469] focus:border-transparent transition-all duration-200"
               required
             />
           </div>
@@ -137,7 +86,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
               id="shouldSplit"
               checked={shouldSplit}
               onChange={(e) => setShouldSplit(e.target.checked)}
-              className="w-4 h-4 text-[#F32D17] border-gray-300 rounded focus:ring-[#F32D17]"
+              className="w-4 h-4 text-[#064469] border-gray-300 rounded focus:ring-[#064469]"
             />
             <label htmlFor="shouldSplit" className="text-sm font-medium text-gray-700">
               Split with friends
@@ -159,10 +108,10 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
                         type="checkbox"
                         checked={splitTo.some(f => f.uid === friend.uid)}
                         onChange={() => handleSplitChange(friend.uid, friend.name)}
-                        className="w-4 h-4 text-[#F32D17] border-gray-300 rounded focus:ring-[#F32D17]"
+                        className="w-4 h-4 text-[#064469] border-gray-300 rounded focus:ring-[#064469]"
                       />
                       <div className="flex items-center gap-2">
-                        <div className="w-8 h-8 bg-gradient-to-r from-[#FD8839] to-[#F32D17] rounded-full flex items-center justify-center text-white font-bold text-sm">
+                        <div className="w-8 h-8 bg-gradient-to-r from-[#5790AB] to-[#064469] rounded-full flex items-center justify-center text-white font-bold text-sm">
                           {friend.name.charAt(0).toUpperCase()}
                         </div>
                         <span className="text-sm font-medium">{friend.name}</span>
@@ -201,7 +150,7 @@ function AddBillModal({ isOpen, onClose, onSubmit }) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 px-4 py-3 bg-gradient-to-r from-[#FD8839] to-[#F32D17] text-white rounded-xl hover:from-[#F32D17] hover:to-[#C1000F] transition-all font-medium disabled:opacity-50"
+              className="flex-1 px-4 py-3 bg-gradient-to-r from-[#5790AB] to-[#064469] text-white rounded-xl hover:from-[#064469] hover:to-[#072D44] transition-all font-medium disabled:opacity-50"
             >
               {loading ? 'Saving...' : 'Save Bill'}
             </button>

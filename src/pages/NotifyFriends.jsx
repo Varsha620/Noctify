@@ -244,17 +244,17 @@ function NotifyFriends() {
       {/* Main Content */}
       <div className="flex flex-col w-full p-4 pb-20 md:pb-4">
         <Navbar />
-        <h2 className="text-2xl md:text-3xl font-light text-[#5E000C] mt-6 mb-4 ml-2 animate-fadeInUp">
+        <h2 className="text-2xl md:text-3xl font-light text-[#072D44] mt-6 mb-4 ml-2 animate-fadeInUp">
           NOTIFY YOUR FRIENDS
         </h2>
 
         <div className="flex flex-col gap-6 lg:flex-row">
           {/* Chat Section */}
-          <div className="flex flex-1 rounded-2xl bg-gradient-to-br from-[#FD8839] to-[#F32D17] shadow-2xl overflow-hidden min-h-[500px] border-[#C1000F] border-[1px] animate-slideInLeft">
+          <div className="flex flex-1 rounded-2xl bg-gradient-to-br from-[#9CCDDB] to-[#5790AB] shadow-2xl overflow-hidden min-h-[500px] border-[#072D44] border-[1px] animate-slideInLeft">
             {/* Mobile View */}
             <div className="flex w-full md:hidden">
               {!showChatView ? (
-                <div className="w-full bg-gradient-to-b from-[#F32D17] to-[#C1000F] text-white flex flex-col py-4">
+                <div className="w-full bg-gradient-to-b from-[#064469] to-[#072D44] text-white flex flex-col py-4">
                   <div className="flex items-center justify-between px-4 mb-4">
                     <h3 className="flex items-center gap-2 text-lg font-bold text-white">
                       <svg className="w-6 h-6 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
@@ -304,7 +304,7 @@ function NotifyFriends() {
               ) : (
                 <div className="relative flex flex-col flex-1 bg-white/10">
                   {/* Chat header with back button */}
-                  <div className="flex items-center justify-between w-full px-4 py-3 bg-gradient-to-r from-[#C1000F] to-[#5E000C] text-white">
+                  <div className="flex items-center justify-between w-full px-4 py-3 bg-gradient-to-r from-[#072D44] to-[#5E000C] text-white">
                     <button 
                       onClick={() => setShowChatView(false)}
                       className="p-2 text-white transition-all transform rounded-xl hover:bg-white/20 hover:scale-110"
@@ -366,7 +366,7 @@ function NotifyFriends() {
                     <button 
                       type="submit" 
                       disabled={!newMessage.trim()}
-                      className="ml-2 w-10 h-10 bg-[#FD8839] rounded-full flex items-center justify-center hover:bg-[#F32D17] transition-all text-white disabled:opacity-50 transform hover:scale-110"
+                      className="ml-2 w-10 h-10 bg-[#9CCDDB] rounded-full flex items-center justify-center hover:bg-[#064469] transition-all text-white disabled:opacity-50 transform hover:scale-110"
                     >
                       <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
@@ -380,10 +380,10 @@ function NotifyFriends() {
             {/* Desktop View */}
             <div className="hidden w-full md:flex">
               {/* Groups list */}
-              <div className="w-1/3 bg-gradient-to-b from-[#F32D17] to-[#C1000F] text-white flex flex-col py-4 rounded-l-2xl">
+              <div className="w-1/3 bg-gradient-to-b from-[#064469] to-[#072D44] text-white flex flex-col py-4 rounded-l-2xl">
                 <div className="flex items-center justify-between px-4 mb-4">
                   <h3 className="flex items-center gap-2 text-lg font-bold text-white">
-                    <svg className="w-6 h-6 animate-pulse" fill="currentColor" viewBox="0 0 20 20">
+                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
                       <path d="M2 5a2 2 0 012-2h7a2 2 0 012 2v4a2 2 0 01-2 2H9l-3 3v-3H4a2 2 0 01-2-2V5zM15 7v2a4 4 0 01-4 4H9.828l-1.766 1.767c.28.149.599.233.938.233h2l3 3v-3h2a2 2 0 002-2V9a2 2 0 00-2-2h-1z" />
                     </svg>
                     Chats ({groups.length})
@@ -434,7 +434,7 @@ function NotifyFriends() {
               <div className="relative flex flex-col flex-1 p-4 bg-white/10">
                 {activeGroupId ? (
                   <>
-                    <div className="w-full px-4 py-3 bg-gradient-to-r from-[#C1000F] to-[#5E000C] text-white rounded-xl mb-4">
+                    <div className="w-full px-4 py-3 bg-gradient-to-r from-[#072D44] to-[#5790AB] text-white rounded-xl mb-4">
                       <div className="flex items-center gap-3">
                         <span className="text-3xl animate-bounce">{activeGroup.avatar || '👥'}</span>
                         <div>
@@ -487,7 +487,7 @@ function NotifyFriends() {
                       <button 
                         type="submit" 
                         disabled={!newMessage.trim()}
-                        className="ml-3 w-10 h-10 bg-[#FD8839] rounded-full flex items-center justify-center hover:bg-[#F32D17] transition-all text-white disabled:opacity-50 transform hover:scale-110"
+                        className="ml-3 w-10 h-10 bg-[#5790AB] rounded-full flex items-center justify-center hover:bg-[#064469] transition-all text-white disabled:opacity-50 transform hover:scale-110"
                       >
                         <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8" />
