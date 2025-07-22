@@ -90,7 +90,7 @@ function UserDropdown() {
                   setShowAvatarModal(true);
                   setIsOpen(false);
                 }}
-                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-[#FD8839]/10 hover:to-[#5790AB]/10 transition-colors duration-200"
+                className="flex items-center w-full px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-[#064469]/10 hover:to-[#5790AB]/10 transition-colors duration-200"
               >
                 <span className="mr-3 text-xl">🎭</span>
                 Change Avatar
@@ -98,7 +98,7 @@ function UserDropdown() {
               
               <Link 
                 to="/settings" 
-                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-[#FD8839]/10 hover:to-[#5790AB]/10 transition-colors duration-200"
+                className="flex items-center px-4 py-3 text-sm text-gray-700 hover:bg-gradient-to-r hover:from-[#064469]/10 hover:to-[#5790AB]/10 transition-colors duration-200"
                 onClick={() => setIsOpen(false)}
               >
                 <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -134,7 +134,7 @@ function UserDropdown() {
                 <button
                   key={index}
                   onClick={() => handleAvatarChange(avatar)}
-                  className={`w-12 h-12 rounded-full text-2xl hover:bg-gradient-to-r hover:from-[#FD8839]/20 hover:to-[#5790AB]/20 transition-all duration-200 transform hover:scale-110 ${
+                  className={`w-12 h-12 rounded-full text-2xl hover:bg-gradient-to-r hover:from-[#064469]/20 hover:to-[#5790AB]/20 transition-all duration-200 transform hover:scale-110 ${
                     selectedAvatar === avatar ? 'bg-[#5790AB] text-white scale-110' : 'bg-gray-100 hover:bg-gray-200'
                   }`}
                 >

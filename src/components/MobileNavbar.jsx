@@ -78,7 +78,7 @@ function MobileNavbar() {
             onClick={() => setActiveTab(item.id)}
             className={`flex flex-col items-center py-2 px-3 rounded-lg transition-all duration-200 ${
               activeTab === item.id 
-                ? 'bg-[#FD8839] text-white transform scale-110' 
+                ? 'bg-[#064469] text-white transform scale-110' 
                 : 'text-gray-600 hover:bg-gray-100'
             }`}
           >

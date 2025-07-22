@@ -211,13 +211,13 @@ select:focus {
   bottom: 20px;
   right: 20px;
   z-index: 1000;
-  background: linear-gradient(135deg, #FD8839, #F32D17);
+  background: linear-gradient(135deg, #064469, #072D44);
   color: white;
   border: none;
   border-radius: 50px;
   padding: 12px 24px;
   font-weight: 600;
-  box-shadow: 0 4px 20px rgba(253, 136, 57, 0.4);
+  box-shadow: 0 4px 20px rgba(6, 68, 105, 0.4);
   cursor: pointer;
   transition: all 0.3s ease;
   animation: bounce 2s infinite;
@@ -225,7 +225,7 @@ select:focus {
 
 .pwa-install-button:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 25px rgba(253, 136, 57, 0.5);
+  box-shadow: 0 6px 25px rgba(6, 68, 105, 0.5);
 }
 
 @media (max-width: 768px) {
@@ -253,7 +253,7 @@ select:focus {
 
 /* Gradient text */
 .gradient-text {
-  background: linear-gradient(135deg, #FD8839, #F32D17);
+  background: linear-gradient(135deg, #064469, #072D44);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -262,7 +262,7 @@ select:focus {
 /* Loading spinner */
 .spinner {
   border: 4px solid #f3f3f3;
-  border-top: 4px solid #FD8839;
+  border-top: 4px solid #064469;
   border-radius: 50%;
   width: 40px;
   height: 40px;
@@ -279,7 +279,7 @@ select:focus {
   position: absolute;
   top: -5px;
   right: -5px;
-  background: #F32D17;
+  background: #072D44;
   color: white;
   border-radius: 50%;
   width: 20px;

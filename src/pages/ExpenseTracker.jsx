@@ -17,11 +17,22 @@ const getCurrentMonthTotal = (bills, currentUserId) => {
     const billDate = bill.createdAt;
     if (!billDate || billDate < start || billDate > end) return;
     
+    // Only count what the user actually paid
     if (bill.createdBy === currentUserId) {
-      total += Number(bill.amount);
+      // If it's a split bill, only count the user's share
+      if (bill.splitTo && bill.splitTo.length > 0) {
+        const userShare = Number(bill.amount) / (bill.splitTo.length + 1); // +1 for creator
+        total += userShare;
+      } else {
+        // If not split, count full amount
+        total += Number(bill.amount);
+      }
     } else if (bill.splitTo?.some(person => person.uid === currentUserId)) {
-      const share = Number(bill.amount) / (bill.splitTo.length + 1); // +1 for creator
-      total += share;
+      // Only count if user has paid their share
+      if (bill.paidBy?.some(person => person.uid === currentUserId)) {
+        const share = Number(bill.amount) / (bill.splitTo.length + 1);
+        total += share;
+      }
     }
   });
   
@@ -181,9 +192,16 @@ function ExpenseTracker() {
       const billDate = bill.createdAt;
       if (!billDate || billDate.getMonth() !== currentMonth || billDate.getFullYear() !== currentYear) return;
 
-      // Your own bills (full amount)
+      // Your own bills
       if (bill.createdBy === currentUser.uid) {
-        paid += Number(bill.amount);
+        if (bill.splitTo && bill.splitTo.length > 0) {
+          // If split bill, only count your share as paid
+          const userShare = Number(bill.amount) / (bill.splitTo.length + 1);
+          paid += userShare;
+        } else {
+          // If not split, count full amount
+          paid += Number(bill.amount);
+        }
       }
       
       // Bills split with you (your share)
