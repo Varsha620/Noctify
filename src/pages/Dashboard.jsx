@@ -61,6 +61,9 @@ function Dashboard() {
         ];
         
         setFriends(friendsList);
+        
+        // Store friend names for lookup
+        window.friendsData = friendsData;
       } catch (error) {
         console.error("Error fetching friends:", error);
       }
@@ -124,45 +127,43 @@ function Dashboard() {
       if (!currentUser) return;
 
       try {
-        // Fetch expense data
+        // Fetch bills created by user
         const billsCreatedQuery = query(
           collection(db, 'bills'),
-          where('createdBy', '==', currentUser.uid)
+          where('createdBy', '==', currentUser.uid),
+          orderBy('createdAt', 'desc')
         );
         
-        const billsSplitQuery = query(
-          collection(db, 'bills'),
-          where('splitTo', 'array-contains-any', [{ uid: currentUser.uid }])
-        );
-
-        const [billsCreatedSnapshot, billsSplitSnapshot] = await Promise.all([
-          getDocs(billsCreatedQuery),
-          getDocs(billsSplitQuery)
-        ]);
+        const billsCreatedSnapshot = await getDocs(billsCreatedQuery);
+        
+        // Get all bills to check splitTo
+        const allBillsSnapshot = await getDocs(collection(db, 'bills'));
 
         // Combine and deduplicate bills
         const allBills = [];
         const billIds = new Set();
 
         billsCreatedSnapshot.docs.forEach(doc => {
-          if (!billIds.has(doc.id)) {
-            billIds.add(doc.id);
-            allBills.push({
-              id: doc.id,
-              ...doc.data(),
-              createdAt: doc.data().createdAt?.toDate()
-            });
-          }
+          billIds.add(doc.id);
+          allBills.push({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate()
+          });
         });
 
-        billsSplitSnapshot.docs.forEach(doc => {
+        // Check all bills for splitTo containing current user
+        allBillsSnapshot.docs.forEach(doc => {
+          const data = doc.data();
           if (!billIds.has(doc.id)) {
-            billIds.add(doc.id);
-            allBills.push({
-              id: doc.id,
-              ...doc.data(),
-              createdAt: doc.data().createdAt?.toDate()
-            });
+            if (data.splitTo?.some(person => person.uid === currentUser.uid)) {
+              billIds.add(doc.id);
+              allBills.push({
+                id: doc.id,
+                ...data,
+                createdAt: data.createdAt?.toDate()
+              });
+            }
           }
         });
 
@@ -358,7 +359,7 @@ function Dashboard() {
                         </div>
                         <div className="flex-1">
                           <p className="text-sm font-medium text-[#072D44]">
-                            {update.userId === currentUser?.uid ? 'You' : 'Friend'}
+                            {update.userId === currentUser?.uid ? 'You' : (window.friendsData?.[update.userId] || 'Friend')}
                           </p>
                           <p className="text-xs text-[#064469] mt-1">{update.content}</p>
                           <p className="text-xs text-[#5790AB] mt-1">{getTimeAgo(update.createdAt)}</p>

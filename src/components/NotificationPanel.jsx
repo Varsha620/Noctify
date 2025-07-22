@@ -45,12 +45,22 @@ function NotificationPanel() {
         
         const [snapshot1, snapshot2] = await Promise.all([getDocs(q1), getDocs(q2)]);
         
-        const friendsList = [
-          ...snapshot1.docs.map(doc => doc.data().user2),
-          ...snapshot2.docs.map(doc => doc.data().user1)
-        ];
+        const friendsData = {};
         
-        setFriends(friendsList);
+        snapshot1.docs.forEach(doc => {
+          const data = doc.data();
+          friendsData[data.user2] = data.user2Name;
+        });
+
+        snapshot2.docs.forEach(doc => {
+          const data = doc.data();
+          friendsData[data.user1] = data.user1Name;
+        });
+        
+        setFriends(Object.keys(friendsData));
+        
+        // Store friend names for lookup
+        window.friendsData = friendsData;
       } catch (error) {
         console.error("Error fetching friends:", error);
       }
@@ -229,7 +239,7 @@ function NotificationPanel() {
                 </div>
                 <div className="flex-1">
                   <p className="text-sm font-medium text-white">
-                    {update.userId === currentUser?.uid ? 'Your status' : "Friend's status"}
+                    {update.userId === currentUser?.uid ? 'Your status' : (window.friendsData?.[update.userId] || "Friend's status")}
                   </p>
                   <p className="mt-1 text-white">{update.content}</p>
                   <div className="flex items-center justify-between mt-2">

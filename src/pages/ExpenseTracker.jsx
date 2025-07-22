@@ -65,31 +65,58 @@ function ExpenseTracker() {
   useEffect(() => {
     if (!currentUser) return;
 
-    const unsubscribe = onSnapshot(
-      query(collection(db, 'bills'), orderBy('createdAt', 'desc')),
-      (snapshot) => {
-        const allBills = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data(),
-          createdAt: doc.data().createdAt?.toDate()
-        }));
-
-        // Filter bills that involve current user
-        const userBills = allBills.filter(bill => 
-          bill.createdBy === currentUser.uid || 
-          bill.splitTo?.some(person => person.uid === currentUser.uid)
-        );
-
-        setBills(userBills);
-        setLoading(false);
-      },
-      (error) => {
-        console.error('Error fetching bills:', error);
-        setLoading(false);
-      }
+    // Listen to bills created by user
+    const billsCreatedQuery = query(
+      collection(db, 'bills'),
+      where('createdBy', '==', currentUser.uid),
+      orderBy('createdAt', 'desc')
     );
 
-    return () => unsubscribe();
+    const unsubscribe1 = onSnapshot(billsCreatedQuery, (snapshot) => {
+      const createdBills = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
+      
+      setBills(prev => {
+        // Remove old bills created by user and add new ones
+        const otherBills = prev.filter(bill => bill.createdBy !== currentUser.uid);
+        return [...otherBills, ...createdBills].sort((a, b) => 
+          (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+        );
+      });
+      setLoading(false);
+    });
+
+    // Listen to all bills to find ones where user is in splitTo
+    const allBillsQuery = query(collection(db, 'bills'), orderBy('createdAt', 'desc'));
+    const unsubscribe2 = onSnapshot(allBillsQuery, (snapshot) => {
+      const allBills = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data(),
+        createdAt: doc.data().createdAt?.toDate()
+      }));
+
+      // Filter bills where user is in splitTo but not creator
+      const splitBills = allBills.filter(bill => 
+        bill.createdBy !== currentUser.uid &&
+        bill.splitTo?.some(person => person.uid === currentUser.uid)
+      );
+
+      setBills(prev => {
+        // Remove old split bills and add new ones
+        const createdBills = prev.filter(bill => bill.createdBy === currentUser.uid);
+        return [...createdBills, ...splitBills].sort((a, b) => 
+          (b.createdAt?.getTime() || 0) - (a.createdAt?.getTime() || 0)
+        );
+      });
+    });
+
+    return () => {
+      unsubscribe1();
+      unsubscribe2();
+    };
   }, [currentUser]);
   
   // Fetch Friends for the split bill feature
@@ -289,7 +316,7 @@ function ExpenseTracker() {
                 </svg>
                 <div className="text-center md:text-left">
                   <h3 className="text-xl font-light md:text-2xl">Monthly Expenses:</h3>
-                  <p className="text-2xl font-semibold md:text-3xl gradient-text">₹{myMonthlyTotal.toFixed(2)}</p>
+                  <p className="text-2xl font-semibold text-white md:text-3xl">₹{myMonthlyTotal.toFixed(2)}</p>
                 </div>
                 <div className="p-3 ml-6 text-white rounded-lg shadow-lg bg-white/20 glass">
                   <h3 className="mb-4 font-normal text-md">My Summary (This Month)</h3>

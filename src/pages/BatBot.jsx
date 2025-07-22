@@ -11,7 +11,7 @@ function BatBot() {
   const [showHistory, setShowHistory] = useState(false);
 
   const handleAskBatBot = async (e) => {
-    e.preventDefault();
+    if (e) e.preventDefault();
     if (!input.trim()) return;
 
     const userMsg = input;
@@ -21,18 +21,28 @@ function BatBot() {
     setIsLoading(true);
 
     try {
-      // 🦇 MOCK BATBOT LOGIC (Free + Instant)
+      // Enhanced BatBot responses
       let reply;
       const prompt = userMsg.toLowerCase();
 
-      if (prompt.includes("pizza")) {
+      if (prompt.includes("bored") || prompt.includes("mess things up")) {
+        reply = "🦇 Bored, are we? Time to unleash some chaos! Here's what we can do:\n\n1. Prank call the Joker 📞\n2. Redesign the Batcave with disco lights 🕺\n3. Teach Alfred to breakdance 💃\n4. Replace all my gadgets with rubber ducks 🦆\n\nWhich mischief shall we begin with, partner in crime? 😈";
+      } else if (prompt.includes("chef mode") || prompt.includes("ask my lord")) {
+        reply = "🦇 *adjusts chef hat over cowl* \n\nWelcome to the Bat-Kitchen! Tonight's menu:\n\n🍝 Spaghetti Justice (with extra vengeance sauce)\n🍕 Gotham Deep Dish (topped with fear)\n🥩 Steak so rare, even the Penguin would approve\n🍰 Alfred's Secret Recipe Cake (classified)\n\nWhat culinary adventure shall we embark upon? Remember, in this kitchen, we don't just cook... we CREATE LEGENDS! 👨‍🍳⚡";
+      } else if (prompt.includes("pizza")) {
         reply = "🦇 Justice tastes like pepperoni. Here's how to make it: dough, sauce, cheese, oven. Boom.";
       } else if (prompt.includes("love")) {
         reply = "🦇 Love? I don't do soft. But I protect. Always.";
       } else if (prompt.includes("exam") || prompt.includes("study")) {
         reply = "🦇 Study like Gotham depends on it. Because it does.";
+      } else if (prompt.includes("hello") || prompt.includes("hi")) {
+        reply = "🦇 Greetings, citizen. Batman here. What brings you to the shadows tonight?";
+      } else if (prompt.includes("help")) {
+        reply = "🦇 Help is what I do best. Whether it's stopping crime or helping with your daily tasks, I'm here. What do you need assistance with?";
+      } else if (prompt.includes("joke") || prompt.includes("funny")) {
+        reply = "🦇 Why doesn't Batman ever get speeding tickets? Because he's always in the Batmobile... and Commissioner Gordon owes me a favor. 😏";
       } else {
-        reply = `🦇 I'm Batman. Here's my take: "${userMsg}"? Sounds like something only the Batmobile can handle.`;
+        reply = `🦇 I'm Batman. Here's my take on "${userMsg}": Sounds like something that requires the full power of the Batcave's supercomputer to analyze. Let me consult with Alfred... 🤔`;
       }
 
       // 🎯 Append BatBot's reply
@@ -133,8 +143,18 @@ function BatBot() {
                         <svg width="120" height="120" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
                           <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="#072D44" />
                         </svg>
-                        <p className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-6 text-center">Bored? Let's mess things up 😏</p>
-                        <p className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-3 text-center">In chef mode? Just ask my lord 🧎‍♂️</p>
+                        <button 
+                          onClick={() => setInput("Bored? Let's mess things up 😏")}
+                          className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-6 text-center hover:bg-white/80 transition-all cursor-pointer transform hover:scale-105"
+                        >
+                          Bored? Let's mess things up 😏
+                        </button>
+                        <button 
+                          onClick={() => setInput("In chef mode? Just ask my lord 🧎‍♂️")}
+                          className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-3 text-center hover:bg-white/80 transition-all cursor-pointer transform hover:scale-105"
+                        >
+                          In chef mode? Just ask my lord 🧎‍♂️
+                        </button>
                       </div>
                     ) : (
                       <>
@@ -172,6 +192,11 @@ function BatBot() {
                       placeholder="BatBot at your service 👾..."
                       value={input}
                       onChange={(e) => setInput(e.target.value)}
+                      onKeyPress={(e) => {
+                        if (e.key === 'Enter') {
+                          handleAskBatBot(e);
+                        }
+                      }}
                       className="flex-1 outline-none text-sm text-[#072D44] placeholder-gray-500"
                       disabled={isLoading}
                     />
@@ -264,8 +289,18 @@ function BatBot() {
                     <svg width="147" height="147" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
                       <path d="M110.25 4.59375C124.031 13.7812 128.625 27.5625 128.625 36.75C128.625 73.5 128.625 110.25 119.438 142.406L114.844 110.25C101.062 119.438 82.6875 128.625 73.5 128.625C64.3125 128.625 45.9375 119.438 32.1562 110.25L27.5625 142.406C18.375 110.25 18.375 73.5 18.375 36.75C18.375 27.5625 22.9688 13.7812 36.75 4.59375C32.1562 18.375 32.1562 32.1562 36.75 41.3438C55.125 32.1562 91.875 32.1562 110.25 41.3438C114.844 32.1562 114.844 18.375 110.25 4.59375ZM110.25 78.0938C100.574 91.5305 95.3203 94.5164 78.0938 101.062C87.7119 110.25 105.513 107.235 114.844 96.4688C118.892 91.7889 116.796 83.6637 110.25 78.0938ZM36.75 78.0938C30.2039 83.6637 28.108 91.7889 32.1562 96.4688C41.4873 107.235 59.2881 110.25 68.9062 101.062C51.6797 94.5164 46.4256 91.5305 36.75 78.0938Z" fill="#072D44" />
                     </svg>
-                    <p className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-9 text-center">Bored? Let's mess things up 😏</p>
-                    <p className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-3 text-center">In chef mode? Just ask my lord 🧎‍♂️</p>
+                    <button 
+                      onClick={() => setInput("Bored? Let's mess things up 😏")}
+                      className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-9 text-center hover:bg-white/80 transition-all cursor-pointer transform hover:scale-105"
+                    >
+                      Bored? Let's mess things up 😏
+                    </button>
+                    <button 
+                      onClick={() => setInput("In chef mode? Just ask my lord 🧎‍♂️")}
+                      className="text-md text-[#072D44] bg-white/60 p-3 px-5 rounded-full mt-3 text-center hover:bg-white/80 transition-all cursor-pointer transform hover:scale-105"
+                    >
+                      In chef mode? Just ask my lord 🧎‍♂️
+                    </button>
                   </div>
                 ) : (
                   <div className="flex-1 mb-4 overflow-y-auto">
@@ -301,6 +336,11 @@ function BatBot() {
                     type="text" 
                     value={input}
                     onChange={(e) => setInput(e.target.value)}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter') {
+                        handleAskBatBot(e);
+                      }
+                    }}
                     placeholder="BatBot at your service 👾..." 
                     className="flex-1 outline-none text-sm text-[#072D44] placeholder-gray-500"
                     disabled={isLoading}
