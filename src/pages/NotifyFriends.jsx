@@ -6,7 +6,7 @@ import NotificationsPanel from '../components/NotificationPanel';
 import NewGroupModal from '../components/NewGroupModal';
 import { 
   collection, query, orderBy, onSnapshot, addDoc, 
-  serverTimestamp, where, getDocs, doc, updateDoc 
+  serverTimestamp, where, getDocs, doc, updateDoc, deleteDoc 
 } from "firebase/firestore";
 import { db } from "../firebase";
 import { useAuth } from '../context/AuthContext';
@@ -21,6 +21,9 @@ function NotifyFriends() {
   const [showChatView, setShowChatView] = useState(false);
   const [friends, setFriends] = useState([]);
   const [notifications, setNotifications] = useState([]);
+  const [newMessageNotifications, setNewMessageNotifications] = useState({});
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [groupToDelete, setGroupToDelete] = useState(null);
   const messagesEndRef = useRef(null);
 
   // Auto-scroll to bottom when messages update
@@ -98,6 +101,49 @@ function NotifyFriends() {
     return () => unsubscribe();
   }, [currentUser]);
 
+  // Listen for new messages in all groups for notifications
+  useEffect(() => {
+    if (!currentUser || groups.length === 0) return;
+
+    const unsubscribeCallbacks = groups.map(group => {
+      const q = query(
+        collection(db, "groups", group.id, "messages"),
+        orderBy("timestamp", "desc"),
+        limit(1)
+      );
+
+      return onSnapshot(q, (snapshot) => {
+        if (!snapshot.empty) {
+          const latestMessage = snapshot.docs[0].data();
+          if (latestMessage.senderId !== currentUser.uid && 
+              group.id !== activeGroupId) {
+            setNewMessageNotifications(prev => ({
+              ...prev,
+              [group.id]: {
+                groupName: group.name,
+                senderName: latestMessage.senderName,
+                timestamp: Date.now()
+              }
+            }));
+
+            // Auto-clear notification after 5 seconds
+            setTimeout(() => {
+              setNewMessageNotifications(prev => {
+                const updated = { ...prev };
+                delete updated[group.id];
+                return updated;
+              });
+            }, 5000);
+          }
+        }
+      });
+    });
+
+    return () => {
+      unsubscribeCallbacks.forEach(unsubscribe => unsubscribe());
+    };
+  }, [groups, currentUser, activeGroupId]);
+
   // Fetch messages for active group with real-time updates
   useEffect(() => {
     if (!activeGroupId) {
@@ -169,6 +215,66 @@ function NotifyFriends() {
   const handleGroupSelect = (groupId) => {
     setActiveGroupId(groupId);
     setShowChatView(true);
+    
+    // Clear notification for this group
+    setNewMessageNotifications(prev => {
+      const updated = { ...prev };
+      delete updated[groupId];
+      return updated;
+    });
+  };
+
+  const handleDeleteGroup = async () => {
+    if (!groupToDelete || !currentUser) return;
+
+    try {
+      // Only allow group creator to delete
+      const group = groups.find(g => g.id === groupToDelete);
+      if (group.createdBy !== currentUser.uid) {
+        alert('Only the group creator can delete this group');
+        return;
+      }
+
+      await deleteDoc(doc(db, 'groups', groupToDelete));
+      
+      if (activeGroupId === groupToDelete) {
+        setActiveGroupId(null);
+        setShowChatView(false);
+      }
+      
+      setShowDeleteModal(false);
+      setGroupToDelete(null);
+    } catch (error) {
+      console.error('Error deleting group:', error);
+      alert('Error deleting group. Please try again.');
+    }
+  };
+
+  const handleLeaveGroup = async (groupId) => {
+    if (!currentUser) return;
+
+    try {
+      const group = groups.find(g => g.id === groupId);
+      const updatedMembers = group.members.filter(member => member !== currentUser.uid);
+      
+      if (updatedMembers.length === 0) {
+        // If no members left, delete the group
+        await deleteDoc(doc(db, 'groups', groupId));
+      } else {
+        // Remove user from group
+        await updateDoc(doc(db, 'groups', groupId), {
+          members: updatedMembers
+        });
+      }
+      
+      if (activeGroupId === groupId) {
+        setActiveGroupId(null);
+        setShowChatView(false);
+      }
+    } catch (error) {
+      console.error('Error leaving group:', error);
+      alert('Error leaving group. Please try again.');
+    }
   };
 
   const markNotificationAsRead = async (notificationId) => {
@@ -236,6 +342,22 @@ function NotifyFriends() {
 
   return (
     <div className="flex flex-col w-full min-h-screen bg-white md:flex-row">
+      {/* New Message Notifications */}
+      {Object.keys(newMessageNotifications).length > 0 && (
+        <div className="fixed z-50 space-y-2 top-4 right-4">
+          {Object.entries(newMessageNotifications).map(([groupId, notification]) => (
+            <div
+              key={groupId}
+              className="bg-[#064469] text-white p-3 rounded-lg shadow-lg animate-slideInRight cursor-pointer"
+              onClick={() => handleGroupSelect(groupId)}
+            >
+              <p className="text-sm font-medium">New message in {notification.groupName}</p>
+              <p className="text-xs opacity-80">From {notification.senderName}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* Sidebar */}
       <div className="hidden md:flex">
         <Sidebar />
@@ -445,17 +567,46 @@ function NotifyFriends() {
                     groups.map((group) => (
                       <div
                         key={group.id}
-                        className={`px-2 py-1 rounded-xl cursor-pointer transition-all transform hover:scale-105 ${
+                        className={`px-2 py-1 rounded-xl cursor-pointer transition-all transform hover:scale-105 relative ${
                           activeGroupId === group.id ? 'bg-white/30 scale-105' : 'hover:bg-white/20'
                         }`}
-                        onClick={() => setActiveGroupId(group.id)}
                       >
+                        {newMessageNotifications[group.id] && (
+                          <div className="absolute w-3 h-3 bg-red-500 rounded-full -top-1 -right-1 animate-pulse"></div>
+                        )}
                         <ChatCard
                           name={group.name}
                           icon={group.avatar || '👥'}
                           lastUpdate={`${getMemberNames(group).join(', ')}`}
                           isActive={activeGroupId === group.id}
                         />
+                        <div className="flex justify-end gap-1 mt-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setActiveGroupId(group.id);
+                            }}
+                            className="px-2 py-1 text-xs rounded bg-white/20 hover:bg-white/30"
+                          >
+                            Open
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (group.createdBy === currentUser.uid) {
+                                setGroupToDelete(group.id);
+                                setShowDeleteModal(true);
+                              } else {
+                                if (window.confirm('Are you sure you want to leave this group?')) {
+                                  handleLeaveGroup(group.id);
+                                }
+                              }
+                            }}
+                            className="px-2 py-1 text-xs text-red-200 rounded bg-red-500/20 hover:bg-red-500/30"
+                          >
+                            {group.createdBy === currentUser.uid ? 'Delete' : 'Leave'}
+                          </button>
+                        </div>
                       </div>
                     ))
                   ) : (
@@ -571,6 +722,35 @@ function NotifyFriends() {
         friends={friends}
         onCreate={handleCreateGroup}
       />
+
+      {/* Delete Group Modal */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50">
+          <div className="max-w-md p-6 mx-4 bg-white rounded-2xl">
+            <h3 className="mb-4 text-xl font-bold text-red-600">Delete Group</h3>
+            <p className="mb-6 text-gray-700">
+              Are you sure you want to delete this group? This action cannot be undone and all messages will be lost.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setGroupToDelete(null);
+                }}
+                className="flex-1 px-4 py-2 text-gray-700 bg-gray-200 rounded-lg hover:bg-gray-300"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleDeleteGroup}
+                className="flex-1 px-4 py-2 text-white bg-red-600 rounded-lg hover:bg-red-700"
+              >
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

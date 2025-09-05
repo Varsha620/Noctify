@@ -1,19 +1,85 @@
 import Navbar from '../components/Navbar';
 import Sidebar from '../components/Sidebar';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useAuth } from '../context/AuthContext';
 
 function BatBot() {
+  const { currentUser } = useAuth();
   const [chat, setChat] = useState([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [chatHistory, setChatHistory] = useState([]);
   const [currentChatId, setCurrentChatId] = useState(null);
   const [showHistory, setShowHistory] = useState(false);
+  const [error, setError] = useState('');
+
+  // Load chat history from localStorage on component mount
+  useEffect(() => {
+    const userId = currentUser?.uid || 'anonymous';
+    const savedHistory = localStorage.getItem(`batbot_history_${userId}`);
+    if (savedHistory) {
+      try {
+        const parsedHistory = JSON.parse(savedHistory);
+        setChatHistory(parsedHistory);
+      } catch (error) {
+        console.error('Error loading chat history:', error);
+      }
+    }
+  }, [currentUser]);
+
+  // Save chat history to localStorage whenever it changes
+  useEffect(() => {
+    const userId = currentUser?.uid || 'anonymous';
+    if (chatHistory.length > 0) {
+      localStorage.setItem(`batbot_history_${userId}`, JSON.stringify(chatHistory));
+    }
+  }, [chatHistory, currentUser]);
+
+  // Load specific chat from history
+  const loadChatFromHistory = (chatId) => {
+    const userId = currentUser?.uid || 'anonymous';
+    const savedChats = localStorage.getItem(`batbot_chats_${userId}`);
+    if (savedChats) {
+      try {
+        const parsedChats = JSON.parse(savedChats);
+        const chatData = parsedChats[chatId];
+        if (chatData) {
+          setChat(chatData.messages);
+          setCurrentChatId(chatId);
+        }
+      } catch (error) {
+        console.error('Error loading chat:', error);
+      }
+    }
+  };
+
+  // Save current chat to localStorage
+  const saveCurrentChat = (messages, chatId) => {
+    const userId = currentUser?.uid || 'anonymous';
+    const savedChats = localStorage.getItem(`batbot_chats_${userId}`);
+    let chats = {};
+    
+    if (savedChats) {
+      try {
+        chats = JSON.parse(savedChats);
+      } catch (error) {
+        console.error('Error parsing saved chats:', error);
+      }
+    }
+    
+    chats[chatId] = {
+      messages,
+      lastUpdated: new Date().toISOString()
+    };
+    
+    localStorage.setItem(`batbot_chats_${userId}`, JSON.stringify(chats));
+  };
 
   const handleAskBatBot = async (e) => {
     if (e) e.preventDefault();
     if (!input.trim()) return;
 
+    setError('');
     const userMsg = input;
     const updatedChat = [...chat, { sender: 'user', text: userMsg }];
     setChat(updatedChat);
@@ -41,6 +107,8 @@ function BatBot() {
         reply = "🦇 Help is what I do best. Whether it's stopping crime or helping with your daily tasks, I'm here. What do you need assistance with?";
       } else if (prompt.includes("joke") || prompt.includes("funny")) {
         reply = "🦇 Why doesn't Batman ever get speeding tickets? Because he's always in the Batmobile... and Commissioner Gordon owes me a favor. 😏";
+      } else if (!currentUser) {
+        reply = "🦇 I see you're using BatBot without an account. While I can still help you, consider signing up to save our conversations and unlock more features. What can I help you with today?";
       } else {
         reply = `🦇 I'm Batman. Here's my take on "${userMsg}": Sounds like something that requires the full power of the Batcave's supercomputer to analyze. Let me consult with Alfred... 🤔`;
       }
@@ -61,9 +129,11 @@ function BatBot() {
           {
             id: newChatId,
             title: userMsg.substring(0, 30) + (userMsg.length > 30 ? '...' : ''),
-            lastMessage: reply.substring(0, 50) + (reply.length > 50 ? '...' : '')
+            lastMessage: reply.substring(0, 50) + (reply.length > 50 ? '...' : ''),
+            createdAt: new Date().toISOString()
           }
         ]);
+        saveCurrentChat(finalChat, newChatId);
       } else {
         setChatHistory(prev =>
           prev.map(item =>
@@ -75,14 +145,16 @@ function BatBot() {
               : item
           )
         );
+        saveCurrentChat(finalChat, currentChatId);
       }
 
       setIsLoading(false);
     } catch (error) {
       console.error('Full error:', error);
+      setError('Sorry, I encountered an error. Please try again.');
       setChat(prev => [...prev, {
         sender: 'batbot',
-        text: "🦇 Alfred reports: " + error.message
+        text: "🦇 The Batcomputer seems to be having issues. Alfred is working on it. Please try again in a moment."
       }]);
       setIsLoading(false);
     }
@@ -92,10 +164,11 @@ function BatBot() {
     setChat([]);
     setCurrentChatId(null);
     setShowHistory(false);
+    setError('');
   };
 
   const loadChatHistory = (chatId) => {
-    setCurrentChatId(chatId);
+    loadChatFromHistory(chatId);
     setShowHistory(false);
   };
 
@@ -138,6 +211,16 @@ function BatBot() {
                   
                   {/* Messages area */}
                   <div className="flex flex-col justify-end flex-1 p-4 space-y-3 overflow-y-auto">
+                    {error && (
+                      <div className="p-3 mb-3 text-red-600 bg-red-100 rounded-lg">
+                        {error}
+                      </div>
+                    )}
+                    {!currentUser && (
+                      <div className="p-3 mb-3 text-blue-600 bg-blue-100 rounded-lg">
+                        💡 Sign up to save your chat history and access more features!
+                      </div>
+                    )}
                     {chat.length === 0 ? (
                       <div className="flex flex-col items-center justify-center h-full">
                         <svg width="120" height="120" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -229,7 +312,12 @@ function BatBot() {
                   </div>
                   <div className="flex flex-col gap-2 px-2 overflow-y-auto">
                     {chatHistory.length === 0 ? (
-                      <p className="px-3 py-2 text-sm text-gray-300">No conversations yet</p>
+                      <div className="px-3 py-2 text-sm text-center text-gray-300">
+                        <p>No conversations yet</p>
+                        {!currentUser && (
+                          <p className="mt-1 text-xs text-gray-400">Sign up to save chat history</p>
+                        )}
+                      </div>
                     ) : (
                       chatHistory.map((chatItem) => (
                         <div
@@ -241,6 +329,9 @@ function BatBot() {
                         >
                           <div className="text-sm font-medium truncate">{chatItem.title}</div>
                           <div className="text-xs text-gray-300 truncate">{chatItem.lastMessage}</div>
+                          <div className="mt-1 text-xs text-gray-400">
+                            {new Date(chatItem.createdAt).toLocaleDateString()}
+                          </div>
                         </div>
                       ))
                     )}
@@ -264,7 +355,12 @@ function BatBot() {
                 </div>
                 <div className="flex flex-col gap-1 px-2 overflow-y-auto">
                   {chatHistory.length === 0 ? (
-                    <p className="px-2 py-2 text-xs text-gray-300">No chats yet</p>
+                    <div className="px-2 py-2 text-xs text-center text-gray-300">
+                      <p>No chats yet</p>
+                      {!currentUser && (
+                        <p className="mt-1 text-xs text-gray-400">Sign up to save history</p>
+                      )}
+                    </div>
                   ) : (
                     chatHistory.map((chatItem) => (
                       <div
@@ -276,6 +372,9 @@ function BatBot() {
                       >
                         <div className="text-xs font-medium truncate">{chatItem.title}</div>
                         <div className="text-xs text-gray-300 truncate">{chatItem.lastMessage}</div>
+                        <div className="mt-1 text-xs text-gray-400">
+                          {new Date(chatItem.createdAt).toLocaleDateString()}
+                        </div>
                       </div>
                     ))
                   )}
@@ -284,6 +383,16 @@ function BatBot() {
 
               {/* Main Chat Area */}
               <div className="relative flex flex-col flex-1 p-4 bg-white/10">
+                {error && (
+                  <div className="p-3 mb-4 text-red-600 bg-red-100 rounded-lg">
+                    {error}
+                  </div>
+                )}
+                {!currentUser && (
+                  <div className="p-3 mb-4 text-blue-600 bg-blue-100 rounded-lg">
+                    💡 Sign up to save your chat history and access more features!
+                  </div>
+                )}
                 {chat.length === 0 ? (
                   <div className="flex flex-col items-center justify-center h-full">
                     <svg width="147" height="147" viewBox="0 0 147 147" fill="none" xmlns="http://www.w3.org/2000/svg">

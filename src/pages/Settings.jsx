@@ -299,7 +299,7 @@ function Settings() {
 
         <div className="w-full max-w-4xl mx-auto space-y-6">
           {/* Profile Section */}
-          <div className="bg-[#EEEEFF] rounded-2xl p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1' }}>
+          <div className="bg-[#EEEEFF] rounded-2xl p-4 md:p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1' }}>
             <h2 className="text-2xl font-semibold text-[#424495] mb-4 flex items-center gap-3">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 12C14.7614 12 17 9.76142 17 7C17 4.23858 14.7614 2 12 2C9.23858 2 7 4.23858 7 7C7 9.76142 9.23858 12 12 12Z" fill="#6366F1"/>
@@ -315,7 +315,7 @@ function Settings() {
                     type="text"
                     value={profileData.name}
                     onChange={(e) => setProfileData({...profileData, name: e.target.value})}
-                    className="w-full px-4 py-3 rounded-xl border border-[#6366F1] focus:ring-2 focus:ring-[#6366F1] focus:border-transparent transition-all duration-200"
+                    className="w-full px-3 md:px-4 py-2 md:py-3 rounded-xl border border-[#6366F1] focus:ring-2 focus:ring-[#6366F1] focus:border-transparent transition-all duration-200"
                     placeholder="Enter your full name"
                   />
                 </div>
@@ -325,7 +325,7 @@ function Settings() {
                     type="email"
                     value={profileData.email}
                     disabled
-                    className="w-full px-4 py-3 text-gray-500 bg-gray-100 border border-gray-300 cursor-not-allowed rounded-xl"
+                    className="w-full px-3 py-2 text-gray-500 bg-gray-100 border border-gray-300 cursor-not-allowed md:px-4 md:py-3 rounded-xl"
                   />
                   <p className="mt-1 text-xs text-gray-500">Email cannot be changed</p>
                 </div>
@@ -334,7 +334,7 @@ function Settings() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="px-6 py-3 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-xl font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
+                  className="px-4 md:px-6 py-2 md:py-3 bg-gradient-to-r from-[#6366F1] to-[#8B5CF6] text-white rounded-xl font-medium hover:shadow-lg transform hover:scale-105 transition-all duration-200 disabled:opacity-50"
                 >
                   {loading ? 'Updating...' : 'Update Profile'}
                 </button>
@@ -343,7 +343,7 @@ function Settings() {
           </div>
 
           {/* Notification Settings */}
-          <div className="bg-[#EEEEFF] rounded-2xl p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1', animationDelay: '0.1s' }}>
+          <div className="bg-[#EEEEFF] rounded-2xl p-4 md:p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1', animationDelay: '0.1s' }}>
             <h2 className="text-2xl font-semibold text-[#424495] mb-4 flex items-center gap-3">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M18 8A6 6 0 0 0 6 8C6 15 3 17 3 17H21S18 15 18 8Z" fill="#6366F1"/>
@@ -357,10 +357,10 @@ function Settings() {
                 { key: 'emailNotifications', label: 'Email Notifications', desc: 'Get updates via email' },
                 { key: 'pushNotifications', label: 'Push Notifications', desc: 'Receive push notifications on your device' }
               ].map((item) => (
-                <div key={item.key} className="flex items-center justify-between p-4 transition-all duration-200 bg-white rounded-xl hover:shadow-md">
+                <div key={item.key} className="flex items-center justify-between p-3 transition-all duration-200 bg-white md:p-4 rounded-xl hover:shadow-md">
                   <div>
                     <h3 className="font-medium text-[#424495]">{item.label}</h3>
-                    <p className="text-sm text-gray-600">{item.desc}</p>
+                    <p className="text-xs text-gray-600 md:text-sm">{item.desc}</p>
                   </div>
                   <button
                     onClick={() => handleToggle(item.key)}
@@ -380,7 +380,7 @@ function Settings() {
           </div>
 
           {/* App Settings */}
-          <div className="bg-[#EEEEFF] rounded-2xl p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1', animationDelay: '0.2s' }}>
+          <div className="bg-[#EEEEFF] rounded-2xl p-4 md:p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1', animationDelay: '0.2s' }}>
             <h2 className="text-2xl font-semibold text-[#424495] mb-4 flex items-center gap-3">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" fill="#6366F1"/>
@@ -389,10 +389,10 @@ function Settings() {
               App Settings
             </h2>
             <div className="space-y-4">
-              <div className="flex items-center justify-between p-4 transition-all duration-200 bg-white rounded-xl hover:shadow-md">
+              <div className="flex items-center justify-between p-3 transition-all duration-200 bg-white md:p-4 rounded-xl hover:shadow-md">
                 <div>
                   <h3 className="font-medium text-[#424495]">Dark Mode</h3>
-                  <p className="text-sm text-gray-600">Switch to dark theme</p>
+                  <p className="text-xs text-gray-600 md:text-sm">Switch to dark theme</p>
                 </div>
                 <button
                   onClick={() => handleToggle('darkMode')}
@@ -408,10 +408,10 @@ function Settings() {
                 </button>
               </div>
 
-              <div className="flex items-center justify-between p-4 transition-all duration-200 bg-white rounded-xl hover:shadow-md">
+              <div className="flex items-center justify-between p-3 transition-all duration-200 bg-white md:p-4 rounded-xl hover:shadow-md">
                 <div>
                   <h3 className="font-medium text-[#424495]">Auto Sync</h3>
-                  <p className="text-sm text-gray-600">Automatically sync data across devices</p>
+                  <p className="text-xs text-gray-600 md:text-sm">Automatically sync data across devices</p>
                 </div>
                 <button
                   onClick={() => handleToggle('autoSync')}
@@ -427,12 +427,12 @@ function Settings() {
                 </button>
               </div>
 
-              <div className="p-4 transition-all duration-200 bg-white rounded-xl hover:shadow-md">
+              <div className="p-3 transition-all duration-200 bg-white md:p-4 rounded-xl hover:shadow-md">
                 <h3 className="font-medium text-[#424495] mb-2">Language</h3>
                 <select
                   value={settings.language}
                   onChange={(e) => handleSelectChange('language', e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-[#6366F1] focus:ring-2 focus:ring-[#6366F1] focus:border-transparent transition-all duration-200"
+                  className="w-full px-3 md:px-4 py-2 rounded-lg border border-[#6366F1] focus:ring-2 focus:ring-[#6366F1] focus:border-transparent transition-all duration-200"
                 >
                   <option value="english">English</option>
                   <option value="hindi">Hindi</option>
@@ -442,12 +442,12 @@ function Settings() {
                 </select>
               </div>
 
-              <div className="p-4 transition-all duration-200 bg-white rounded-xl hover:shadow-md">
+              <div className="p-3 transition-all duration-200 bg-white md:p-4 rounded-xl hover:shadow-md">
                 <h3 className="font-medium text-[#424495] mb-2">Currency</h3>
                 <select
                   value={settings.currency}
                   onChange={(e) => handleSelectChange('currency', e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg border border-[#6366F1] focus:ring-2 focus:ring-[#6366F1] focus:border-transparent transition-all duration-200"
+                  className="w-full px-3 md:px-4 py-2 rounded-lg border border-[#6366F1] focus:ring-2 focus:ring-[#6366F1] focus:border-transparent transition-all duration-200"
                 >
                   <option value="inr">INR (₹)</option>
                   <option value="usd">USD ($)</option>
@@ -460,7 +460,7 @@ function Settings() {
               <div className="flex justify-end">
                 <button
                   onClick={resetSettings}
-                  className="px-4 py-2 text-sm text-gray-700 transition-colors bg-gray-200 rounded-lg hover:bg-gray-300"
+                  className="px-3 py-2 text-sm text-gray-700 transition-colors bg-gray-200 rounded-lg md:px-4 hover:bg-gray-300"
                 >
                   Reset to Default
                 </button>
@@ -469,7 +469,7 @@ function Settings() {
           </div>
 
           {/* Data Management */}
-          <div className="bg-[#EEEEFF] rounded-2xl p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1', animationDelay: '0.3s' }}>
+          <div className="bg-[#EEEEFF] rounded-2xl p-4 md:p-6 shadow-lg animate-fadeInUp" style={{ boxShadow: '-8px 5px 15px #6366F1', animationDelay: '0.3s' }}>
             <h2 className="text-2xl font-semibold text-[#424495] mb-4 flex items-center gap-3">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M14 2H6C4.9 2 4 2.9 4 4V20C4 21.1 4.89 22 5.99 22H18C19.1 22 20 21.1 20 20V8L14 2ZM18 20H6V4H13V9H18V20Z" fill="#6366F1"/>
@@ -477,13 +477,13 @@ function Settings() {
               Data Management
             </h2>
             <div className="space-y-4">
-              <div className="p-4 transition-all duration-200 bg-white rounded-xl hover:shadow-md">
+              <div className="p-3 transition-all duration-200 bg-white md:p-4 rounded-xl hover:shadow-md">
                 <h3 className="font-medium text-[#424495] mb-2">Export Data</h3>
-                <p className="mb-3 text-sm text-gray-600">Download all your data including profile, exams, bills, and friends in JSON format</p>
+                <p className="mb-3 text-xs text-gray-600 md:text-sm">Download all your data including profile, exams, bills, and friends in JSON format</p>
                 <button
                   onClick={exportData}
                   disabled={loading}
-                  className="px-4 py-2 text-white transition-colors bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="px-3 py-2 text-white transition-colors bg-blue-600 rounded-lg md:px-4 hover:bg-blue-700 disabled:opacity-50"
                 >
                   {loading ? 'Exporting...' : 'Export Data'}
                 </button>
@@ -492,7 +492,7 @@ function Settings() {
           </div>
 
           {/* Danger Zone */}
-          <div className="p-6 border border-red-200 bg-red-50 rounded-2xl animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
+          <div className="p-4 border border-red-200 md:p-6 bg-red-50 rounded-2xl animate-fadeInUp" style={{ animationDelay: '0.4s' }}>
             <h2 className="flex items-center gap-3 mb-4 text-2xl font-semibold text-red-600">
               <svg width="30" height="30" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M12 9V13M12 17H12.01M21 12C21 16.9706 16.9706 21 12 21C7.02944 21 3 16.9706 3 12C3 7.02944 7.02944 3 12 3C16.9706 3 21 7.02944 21 12Z" stroke="#DC2626" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -500,25 +500,25 @@ function Settings() {
               Danger Zone
             </h2>
             <div className="space-y-4">
-              <div className="p-4 bg-white rounded-xl">
+              <div className="p-3 bg-white md:p-4 rounded-xl">
                 <h3 className="mb-2 font-medium text-red-600">Clear All Data</h3>
-                <p className="mb-3 text-sm text-gray-600">This will permanently delete all your exams, bills, friends, and other data. Your account will remain active.</p>
+                <p className="mb-3 text-xs text-gray-600 md:text-sm">This will permanently delete all your exams, bills, friends, and other data. Your account will remain active.</p>
                 <button 
                   onClick={handleClearAllData}
                   disabled={loading}
-                  className="px-4 py-2 text-white transition-all duration-200 transform bg-orange-600 rounded-lg hover:bg-orange-700 hover:scale-105 disabled:opacity-50"
+                  className="px-3 py-2 text-white transition-all duration-200 transform bg-orange-600 rounded-lg md:px-4 hover:bg-orange-700 hover:scale-105 disabled:opacity-50"
                 >
                   {loading ? 'Clearing...' : 'Clear All Data'}
                 </button>
               </div>
               
-              <div className="p-4 bg-white rounded-xl">
+              <div className="p-3 bg-white md:p-4 rounded-xl">
                 <h3 className="mb-2 font-medium text-red-600">Delete Account</h3>
-                <p className="mb-3 text-sm text-gray-600">This will permanently delete your account and all associated data. This action cannot be undone.</p>
+                <p className="mb-3 text-xs text-gray-600 md:text-sm">This will permanently delete your account and all associated data. This action cannot be undone.</p>
                 <button 
                   onClick={handleDeleteAccount}
                   disabled={loading}
-                  className="px-4 py-2 text-white transition-all duration-200 transform bg-red-600 rounded-lg hover:bg-red-700 hover:scale-105 disabled:opacity-50"
+                  className="px-3 py-2 text-white transition-all duration-200 transform bg-red-600 rounded-lg md:px-4 hover:bg-red-700 hover:scale-105 disabled:opacity-50"
                 >
                   {loading ? 'Deleting...' : 'Delete Account'}
                 </button>

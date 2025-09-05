@@ -203,6 +203,23 @@ select:focus {
     min-height: 44px;
     min-width: 44px;
   }
+  
+  /* Mobile table improvements */
+  .mobile-table-card {
+    @apply p-3 mb-3 bg-white rounded-lg shadow-sm;
+  }
+  
+  .mobile-table-header {
+    @apply flex items-start justify-between mb-2;
+  }
+  
+  .mobile-table-content {
+    @apply text-sm text-gray-600;
+  }
+  
+  .mobile-table-actions {
+    @apply flex gap-2 mt-2;
+  }
 }
 
 /* PWA Install Button */

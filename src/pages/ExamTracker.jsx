@@ -166,47 +166,84 @@ function ExamTracker() {
             </div>
             
             {/* Mobile-friendly table */}
-            <div className="p-4 overflow-x-auto bg-white/20 rounded-xl">
-              <table className="w-full text-center min-w-[600px]">
-                <thead>
-                  <tr className="text-lg font-normal text-[#072D44] border-b md:text-xl border-[#072D44]/30">
-                    <th className="py-3">Subject</th>
-                    <th className="py-3">Exam Date</th>
-                    <th className="py-3">Portions</th>
-                    <th className="py-3">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="text-[#072D44]">
-                  {exams.map(exam => (
-                    <tr key={exam.id} className="h-12 transition-colors border-b border-[#072D44]/20 hover:bg-white/10">
-                      <td className="py-2">{exam.subject}</td>
-                      <td className="py-2">{formatDate(exam.examDate)}</td>
-                      <td className="py-2 max-w-[200px] truncate">{exam.portions || 'Not specified'}</td>
-                      <td className="py-2">
-                        <div className="flex justify-center gap-2">
-                          <button
-                            onClick={() => handleEdit(exam)}
-                            className="px-3 py-1 text-sm text-white transition-colors rounded-lg bg-[#064469] hover:bg-[#072D44]"
-                          >
-                            Edit
-                          </button>
-                          <button
-                            onClick={() => handleDelete(exam.id)}
-                            className="px-3 py-1 bg-[#072D44] text-white rounded-lg hover:bg-[#064469] transition-colors text-sm"
-                          >
-                            Delete
-                          </button>
-                        </div>
-                      </td>
+            <div className="p-2 overflow-x-auto md:p-4 bg-white/20 rounded-xl">
+              {/* Desktop Table */}
+              <div className="hidden md:block">
+                <table className="w-full text-center min-w-[600px]">
+                  <thead>
+                    <tr className="text-lg font-normal text-[#072D44] border-b md:text-xl border-[#072D44]/30">
+                      <th className="py-3">Subject</th>
+                      <th className="py-3">Exam Date</th>
+                      <th className="py-3">Portions</th>
+                      <th className="py-3">Actions</th>
                     </tr>
-                  ))}
-                  {exams.length === 0 && (
-                    <tr>
-                      <td colSpan="4" className="py-8 text-[#072D44]/70">No exams scheduled</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="text-[#072D44]">
+                    {exams.map(exam => (
+                      <tr key={exam.id} className="h-12 transition-colors border-b border-[#072D44]/20 hover:bg-white/10">
+                        <td className="py-2">{exam.subject}</td>
+                        <td className="py-2">{formatDate(exam.examDate)}</td>
+                        <td className="py-2 max-w-[200px] truncate">{exam.portions || 'Not specified'}</td>
+                        <td className="py-2">
+                          <div className="flex justify-center gap-2">
+                            <button
+                              onClick={() => handleEdit(exam)}
+                              className="px-3 py-1 text-sm text-white transition-colors rounded-lg bg-[#064469] hover:bg-[#072D44]"
+                            >
+                              Edit
+                            </button>
+                            <button
+                              onClick={() => handleDelete(exam.id)}
+                              className="px-3 py-1 bg-[#072D44] text-white rounded-lg hover:bg-[#064469] transition-colors text-sm"
+                            >
+                              Delete
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {exams.length === 0 && (
+                      <tr>
+                        <td colSpan="4" className="py-8 text-[#072D44]/70">No exams scheduled</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Mobile Cards */}
+              <div className="space-y-3 md:hidden">
+                {exams.map((exam, index) => (
+                  <div key={exam.id} className="p-3 rounded-lg bg-white/30 animate-slideInUp" style={{ animationDelay: `${index * 0.1}s` }}>
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="font-medium text-[#072D44]">{exam.subject}</h3>
+                        <p className="text-sm text-[#064469]">{formatDate(exam.examDate)}</p>
+                        <p className="text-xs text-[#064469]/80 mt-1">{exam.portions || 'Not specified'}</p>
+                      </div>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(exam)}
+                          className="px-2 py-1 text-xs text-white transition-colors rounded bg-[#064469] hover:bg-[#072D44]"
+                        >
+                          Edit
+                        </button>
+                        <button
+                          onClick={() => handleDelete(exam.id)}
+                          className="px-2 py-1 text-xs text-white transition-colors rounded bg-[#072D44] hover:bg-[#064469]"
+                        >
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+                {exams.length === 0 && (
+                  <div className="py-8 text-center text-[#072D44]/70">
+                    <p>No exams scheduled</p>
+                  </div>
+                )}
+              </div>
             </div>
             
             <div className="flex justify-end mt-4">
