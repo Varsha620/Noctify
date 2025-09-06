@@ -9,6 +9,7 @@ import Settings from './pages/Settings'
 import MobileNavbar from './components/MobileNavbar'
 import PWAInstallPrompt from './components/PWAInstallPrompt'
 import { AuthProvider, useAuth } from './context/AuthContext'
+import Sidebar from './components/Sidebar';
 
 // Protected Route Component
 function ProtectedRoute({ children }) {
@@ -36,63 +37,69 @@ function AppContent() {
   const { currentUser } = useAuth();
 
   return (
-    <div className="relative">
-      <Routes>
-        <Route 
-          path="/login" 
-          element={currentUser ? <Navigate to="/" replace /> : <Login />} 
-        />
-        <Route 
-          path="/" 
-          element={
-            <ProtectedRoute>
-              <Dashboard />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/exam-tracker" 
-          element={
-            <ProtectedRoute>
-              <ExamTracker />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/expense-tracker" 
-          element={
-            <ProtectedRoute>
-              <ExpenseTracker />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/notify-friends" 
-          element={
-            <ProtectedRoute>
-              <NotifyFriends />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/bat-bot" 
-          element={
-            <ProtectedRoute>
-              <BatBot />
-            </ProtectedRoute>
-          } 
-        />
-        <Route 
-          path="/settings" 
-          element={
-            <ProtectedRoute>
-              <Settings />
-            </ProtectedRoute>
-          } 
-        />
-      </Routes>
-      
-      {/* Mobile Navigation - Show on all pages except login */}
+    <div className="relative flex">
+      {/* Sidebar - always visible if logged in */}
+      {currentUser && <Sidebar />}
+
+      {/* Main content */}
+      <div className="flex-1 ml-20 transition-all duration-300">
+        <Routes>
+          <Route 
+            path="/login" 
+            element={currentUser ? <Navigate to="/" replace /> : <Login />} 
+          />
+          <Route 
+            path="/" 
+            element={
+              <ProtectedRoute>
+                <Dashboard />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/exam-tracker" 
+            element={
+              <ProtectedRoute>
+                <ExamTracker />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/expense-tracker" 
+            element={
+              <ProtectedRoute>
+                <ExpenseTracker />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/notify-friends" 
+            element={
+              <ProtectedRoute>
+                <NotifyFriends />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/bat-bot" 
+            element={
+              <ProtectedRoute>
+                <BatBot />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path="/settings" 
+            element={
+              <ProtectedRoute>
+                <Settings />
+              </ProtectedRoute>
+            } 
+          />
+        </Routes>
+      </div>
+
+      {/* Mobile Navigation */}
       {currentUser && (
         <Routes>
           <Route path="/login" element={null} />
@@ -105,6 +112,7 @@ function AppContent() {
     </div>
   );
 }
+
 
 function App() {
   return (

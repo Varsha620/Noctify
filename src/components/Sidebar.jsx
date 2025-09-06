@@ -6,7 +6,7 @@ function Sidebar() {
   const isActive = (path) => location.pathname === path;
 
   return (
-    <div className="bg-[#D0D7E1] w-20 min-h-screen flex-col items-center py-4 space-y-6 hidden md:flex">
+    <div className="fixed top-0 left-0 h-full bg-[#D0D7E1] w-20 flex-col items-center py-4 space-y-6 hidden md:flex shadow-lg z-50">
       {/* Logo */}
       <div className="mb-4 text-2xl font-semibold transition-all duration-300 transform hover:scale-110">
         <svg width="60" height="60" viewBox="0 0 79 79" fill="none" xmlns="http://www.w3.org/2000/svg">
